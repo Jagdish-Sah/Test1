@@ -1,0 +1,976 @@
+--
+-- PostgreSQL database dump
+--
+
+\restrict UD4CTl7aHbPGHrzXrkrmtEbBVDBh0IS2uCwLx1BwfjQkE6OEKu1Co3QCLRIpuYs
+
+-- Dumped from database version 17.10 (4f20678)
+-- Dumped by pg_dump version 17.10 (Ubuntu 17.10-1.pgdg24.04+1)
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: audit_log; Type: TABLE; Schema: public; Owner: neondb_owner
+--
+
+CREATE TABLE public.audit_log (
+    id integer NOT NULL,
+    "timestamp" timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    action character varying(50) NOT NULL,
+    symbol character varying(20),
+    details text
+);
+
+
+ALTER TABLE public.audit_log OWNER TO neondb_owner;
+
+--
+-- Name: audit_log_id_seq; Type: SEQUENCE; Schema: public; Owner: neondb_owner
+--
+
+CREATE SEQUENCE public.audit_log_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.audit_log_id_seq OWNER TO neondb_owner;
+
+--
+-- Name: audit_log_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
+--
+
+ALTER SEQUENCE public.audit_log_id_seq OWNED BY public.audit_log.id;
+
+
+--
+-- Name: cache; Type: TABLE; Schema: public; Owner: neondb_owner
+--
+
+CREATE TABLE public.cache (
+    symbol character varying(50) NOT NULL,
+    ltp numeric(10,2),
+    change character varying(50),
+    last_updated timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.cache OWNER TO neondb_owner;
+
+--
+-- Name: history; Type: TABLE; Schema: public; Owner: neondb_owner
+--
+
+CREATE TABLE public.history (
+    id integer NOT NULL,
+    "timestamp" timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    event_type character varying(50),
+    description text
+);
+
+
+ALTER TABLE public.history OWNER TO neondb_owner;
+
+--
+-- Name: history_id_seq; Type: SEQUENCE; Schema: public; Owner: neondb_owner
+--
+
+CREATE SEQUENCE public.history_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.history_id_seq OWNER TO neondb_owner;
+
+--
+-- Name: history_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
+--
+
+ALTER SEQUENCE public.history_id_seq OWNED BY public.history.id;
+
+
+--
+-- Name: portfolio; Type: TABLE; Schema: public; Owner: neondb_owner
+--
+
+CREATE TABLE public.portfolio (
+    "S.N." integer NOT NULL,
+    symbol text,
+    qty bigint,
+    price double precision,
+    transaction_type text,
+    date date,
+    remarks text,
+    net_amount numeric,
+    total_invested numeric,
+    total_received numeric,
+    tms_commission numeric(15,4) DEFAULT 0.0,
+    cgt numeric(15,4),
+    soft_entry numeric(10,2),
+    hard_entry numeric(10,2),
+    soft_sl numeric(10,2),
+    hard_sl numeric(10,2),
+    soft_target numeric(10,2),
+    hard_target numeric(10,2)
+);
+
+
+ALTER TABLE public.portfolio OWNER TO neondb_owner;
+
+--
+-- Name: portfolio_backup; Type: TABLE; Schema: public; Owner: neondb_owner
+--
+
+CREATE TABLE public.portfolio_backup (
+    symbol text,
+    qty bigint,
+    price double precision,
+    transaction_type text,
+    date date,
+    remarks text,
+    net_amount numeric,
+    total_invested numeric,
+    total_received numeric,
+    tms_commission numeric(15,4) DEFAULT 0.0,
+    cgt numeric(15,4),
+    soft_entry numeric(10,2),
+    hard_entry numeric(10,2),
+    soft_sl numeric(10,2),
+    hard_sl numeric(10,2),
+    soft_target numeric(10,2),
+    hard_target numeric(10,2),
+    "S.N." integer NOT NULL
+);
+
+
+ALTER TABLE public.portfolio_backup OWNER TO neondb_owner;
+
+--
+-- Name: portfolio_S.N._seq; Type: SEQUENCE; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE public.portfolio_backup ALTER COLUMN "S.N." ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public."portfolio_S.N._seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: portfolio_S.N._seq1; Type: SEQUENCE; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE public.portfolio ALTER COLUMN "S.N." ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public."portfolio_S.N._seq1"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: portfolio_sn_seq; Type: SEQUENCE; Schema: public; Owner: neondb_owner
+--
+
+CREATE SEQUENCE public.portfolio_sn_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.portfolio_sn_seq OWNER TO neondb_owner;
+
+--
+-- Name: tms_trx; Type: TABLE; Schema: public; Owner: neondb_owner
+--
+
+CREATE TABLE public.tms_trx (
+    id integer NOT NULL,
+    date date NOT NULL,
+    stock text,
+    type text NOT NULL,
+    medium text,
+    amount numeric NOT NULL,
+    charge numeric DEFAULT 0,
+    remark text,
+    status text,
+    reference text
+);
+
+
+ALTER TABLE public.tms_trx OWNER TO neondb_owner;
+
+--
+-- Name: tms_trx_id_seq; Type: SEQUENCE; Schema: public; Owner: neondb_owner
+--
+
+CREATE SEQUENCE public.tms_trx_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.tms_trx_id_seq OWNER TO neondb_owner;
+
+--
+-- Name: tms_trx_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
+--
+
+ALTER SEQUENCE public.tms_trx_id_seq OWNED BY public.tms_trx.id;
+
+
+--
+-- Name: trading_journal; Type: TABLE; Schema: public; Owner: neondb_owner
+--
+
+CREATE TABLE public.trading_journal (
+    id integer NOT NULL,
+    date_time_stamp timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    symbol character varying(20) DEFAULT 'GENERAL'::character varying,
+    topic text,
+    feeling text,
+    star integer,
+    trade_thesis text,
+    final_remark text,
+    CONSTRAINT trading_journal_star_check CHECK (((star >= 1) AND (star <= 10)))
+);
+
+
+ALTER TABLE public.trading_journal OWNER TO neondb_owner;
+
+--
+-- Name: trading_journal_id_seq; Type: SEQUENCE; Schema: public; Owner: neondb_owner
+--
+
+CREATE SEQUENCE public.trading_journal_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.trading_journal_id_seq OWNER TO neondb_owner;
+
+--
+-- Name: trading_journal_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
+--
+
+ALTER SEQUENCE public.trading_journal_id_seq OWNED BY public.trading_journal.id;
+
+
+--
+-- Name: watchlist; Type: TABLE; Schema: public; Owner: neondb_owner
+--
+
+CREATE TABLE public.watchlist (
+    id integer NOT NULL,
+    symbol character varying(20) NOT NULL,
+    target_price numeric(10,2),
+    stop_loss numeric(10,2),
+    notes text,
+    added_date date DEFAULT CURRENT_DATE
+);
+
+
+ALTER TABLE public.watchlist OWNER TO neondb_owner;
+
+--
+-- Name: watchlist_id_seq; Type: SEQUENCE; Schema: public; Owner: neondb_owner
+--
+
+CREATE SEQUENCE public.watchlist_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.watchlist_id_seq OWNER TO neondb_owner;
+
+--
+-- Name: watchlist_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
+--
+
+ALTER SEQUENCE public.watchlist_id_seq OWNED BY public.watchlist.id;
+
+
+--
+-- Name: wealth; Type: TABLE; Schema: public; Owner: neondb_owner
+--
+
+CREATE TABLE public.wealth (
+    snapshot_date date NOT NULL,
+    total_investment numeric NOT NULL,
+    current_value numeric NOT NULL
+);
+
+
+ALTER TABLE public.wealth OWNER TO neondb_owner;
+
+--
+-- Name: audit_log id; Type: DEFAULT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.audit_log ALTER COLUMN id SET DEFAULT nextval('public.audit_log_id_seq'::regclass);
+
+
+--
+-- Name: history id; Type: DEFAULT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.history ALTER COLUMN id SET DEFAULT nextval('public.history_id_seq'::regclass);
+
+
+--
+-- Name: tms_trx id; Type: DEFAULT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.tms_trx ALTER COLUMN id SET DEFAULT nextval('public.tms_trx_id_seq'::regclass);
+
+
+--
+-- Name: trading_journal id; Type: DEFAULT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.trading_journal ALTER COLUMN id SET DEFAULT nextval('public.trading_journal_id_seq'::regclass);
+
+
+--
+-- Name: watchlist id; Type: DEFAULT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.watchlist ALTER COLUMN id SET DEFAULT nextval('public.watchlist_id_seq'::regclass);
+
+
+--
+-- Data for Name: audit_log; Type: TABLE DATA; Schema: public; Owner: neondb_owner
+--
+
+COPY public.audit_log (id, "timestamp", action, symbol, details) FROM stdin;
+1	2026-03-18 16:38:03.208901	TRADE_BUY	ULHC	10 units @ Rs 450.3 | Net: Rs 4544.89
+2	2026-03-18 16:44:30.396372	TRADE_BUY	TPC	10 units @ Rs 372.1 | Net: Rs 3759.95
+3	2026-03-18 16:45:36.654826	TRADE_BUY	KKHC	20 units @ Rs 247.8 | Net: Rs 4999.59
+4	2026-03-18 17:12:48.995868	TRADE_SELL	TPC	10 units @ Rs 386.5 | Net: Rs 3820.59 | Notes: Sold With BE as soon as BE Reached.<Maybe I should Have Waited>
+5	2026-03-18 17:19:24.750821	TRADE_BUY	NHPC	10 units @ Rs 220.5 | Net: Rs 2240.33 | Notes: Impulse Buy,FOMO,Gamble,Circuit Chase,Partial Buy
+6	2026-03-18 17:19:50.686975	TRADE_BUY	NHPC	10 units @ Rs 225.1 | Net: Rs 2261.34 | Notes: Partial Buy More
+7	2026-03-18 17:25:07.544488	TRADE_SELL	KKHC	20 units @ Rs 248.0 | Net: Rs 4916.40 | Notes: Sold Too Early, Scary Cat Effect, Ignored Bullish View to chase BE, Got Circuit After i sold
+8	2026-03-18 17:27:09.933744	TRADE_BUY	ULHC	10 units @ Rs 507.0 | Net: Rs 5114.01 | Notes: TMS 58 Huge Accumulation, Target High
+9	2026-03-18 17:28:18.617157	TRADE_SELL	NHPC	10 units @ Rs 221.3 | Net: Rs 2177.67 | Notes: Partial Sell At BE after Chasing BE
+10	2026-03-18 17:29:47.061117	TRADE_BUY	SGHC	10 units @ Rs 433.1 | Net: Rs 4372.24 | Notes: Bought For 58 Accumulation But Was Trap
+11	2026-03-18 17:58:12.136219	TRADE_SELL	NHPC	10 units @ Rs 289.0 | Net: Rs 2808.91 | Notes: Sold After Circuit, Phychological Barrier 300, Buy Low Sell High Intraday
+12	2026-03-18 18:00:03.617449	TRADE_BUY	NHPC	10 units @ Rs 280.1 | Net: Rs 2836.50 | Notes: Intraday trading, Risky But Profitable, Buy Low Sell High, Only For Liquid and High Volatile
+13	2026-03-18 18:02:14.597445	TRADE_BUY	ULHC	10 units @ Rs 540.0 | Net: Rs 5445.25 | Notes: ULHC Trend Of SideWay
+14	2026-03-18 18:08:21.90077	TRADE_SELL	SGHC	10 units @ Rs 416.7 | Net: Rs 4126.37 | Notes: Sold My Losing Stock and Inactive, Very Less Chance Of Uptrend.
+15	2026-03-18 18:14:35.351477	TRADE_SELL	ULHC	10 units @ Rs 571.2 | Net: Rs 5602.87 | Notes: Intraday Buy Low Sell High Strategy.
+16	2026-03-19 05:53:57.416957	WATCHLIST_ADD	ULHC	Added/Updated Watchlist
+17	2026-03-22 11:43:24.177348	TRADE_BUY	NHPC	10 units @ Rs 311.0 | Net: Rs 3146.66 | Notes: Buy In Bull Market
+18	2026-03-22 11:44:09.022212	TRADE_BUY	RIDI	10 units @ Rs 355.3 | Net: Rs 3591.32 | Notes: Buy In Bull Market + Top Turnover
+19	2026-03-23 10:59:45.176854	TRADE_BUY	NHPC	10 units @ Rs 299.0 | Net: Rs 3026.21 | Notes: Buy
+20	2026-03-23 11:00:45.055939	TRADE_BUY	ULHC	10 units @ Rs 550.0 | Net: Rs 5545.62 | Notes: Buy At Lower Price for Intraday SideWay
+21	2026-03-25 14:46:29.646469	TRADE_SELL	ULHC	20 units @ Rs 547.0 | Net: Rs 10849.44 | Notes: Over Leverage So Sell To Clear Dues Of TMS
+22	2026-03-25 15:37:01.568452	RAW_SQL_EXEC	-	Executed: ALTER TABLE trading_journal \nADD COLUMN second_rem...
+23	2026-03-25 15:48:27.06151	RAW_SQL_EXEC	-	Executed: -- DANGER: This will delete old journal entries to...
+24	2026-03-29 05:09:15.630498	TRADE_BUY	RIDI	10 units @ Rs 380.0 | Net: Rs 3839.25 | Notes: Gamble at Balen Hype, Capital From TMS Loophole
+25	2026-03-29 05:27:46.238052	TRADE_BUY	NHPC	10 units @ Rs 314.0 | Net: Rs 3176.78 | Notes: Buy Dip, Gamble At Balen hype.
+26	2026-03-31 15:45:11.479846	TRADE_SELL	ULHC	10 units @ Rs 520.9 | Net: Rs 5164.47 | Notes: Sold To Pay For TMS
+27	2026-04-09 10:36:47.062443	TRADE_BUY	NHPC	20 units @ Rs 300.6 | TMS Sync: Rs -6,059.55 | Comm: Rs 22.55
+28	2026-04-10 13:56:33.390366	TRADE_SELL	NHPC	20 units @ Rs 313.9 | TMS Sync: Rs 6,219.22 | Comm: Rs 23.54
+29	2026-04-15 05:50:17.139033	TRADE_BUY	NHPC	20 units @ Rs 333.0 | TMS Sync: Rs -6,709.98 | Comm: Rs 24.97
+30	2026-04-16 12:26:14.081209	TRADE_SELL	NHPC	20 units @ Rs 317.9 | TMS Sync: Rs 6,291.67 | Comm: Rs 23.84
+31	2026-04-17 13:52:20.718131	TRADE_SELL	RIDI	10 units @ Rs 369.9 | TMS Sync: Rs 3,660.13 | Comm: Rs 13.87
+32	2026-04-17 13:52:57.365162	TRADE_SELL	NHPC	20 units @ Rs 314.6 | TMS Sync: Rs 6,243.40 | Comm: Rs 23.59
+33	2026-04-20 05:34:34.365319	TRADE_BUY	RIDI	10 units @ Rs 356.0 | TMS Sync: Rs -3,598.35 | Comm: Rs 13.35
+34	2026-04-20 07:18:35.038567	TRADE_BUY	MCHL	10 units @ Rs 400.1 | TMS Sync: Rs -4,041.00 | Comm: Rs 15.00
+35	2026-04-23 09:25:18.556156	TRADE_SELL	MCHL	10 units @ Rs 365.8 | TMS Sync: Rs 3,619.28 | Comm: Rs 13.72
+36	2026-04-28 12:52:59.211889	TRADE_BUY	NHPC	15 units @ Rs 298.8 | TMS Sync: Rs -4,523.81 | Comm: Rs 16.81
+37	2026-04-28 12:53:19.6639	TRADE_BUY	RIDI	15 units @ Rs 347.0 | TMS Sync: Rs -5,249.52 | Comm: Rs 19.52
+38	2026-05-20 11:59:15.823322	TRADE_SELL	RIDI	20 units @ Rs 351.4 | TMS Sync: Rs 6,976.65 | Comm: Rs 26.35
+39	2026-05-22 15:01:28.903006	TRADE_BUY	ULHC	10 units @ Rs 477.7 | TMS Sync: Rs -4,819.91 | Comm: Rs 17.91
+40	2026-06-02 11:24:19.280877	TRADE_SELL	NHPC	15 units @ Rs 299.0 | TMS Sync: Rs 4,443.18 | Comm: Rs 16.82
+41	2026-06-25 14:56:14.698844	TRADE_BUY	RIDI	13 units @ Rs 332.0 | TMS Sync: Rs -4,357.19 | Comm: Rs 16.18
+42	2026-06-26 16:22:01.141309	TRADE_BUY	HBL	10 units @ Rs 193.0 | TMS Sync: Rs -1,965.29 | Comm: Rs 10.29
+43	2026-06-26 16:22:09.631277	TRADE_BUY	HBL	10 units @ Rs 193.0 | TMS Sync: Rs -1,940.29 | Comm: Rs 10.29
+44	2026-06-26 16:23:15.047151	TRADE_BUY	KBL	20 units @ Rs 207.7 | TMS Sync: Rs -4,194.58 | Comm: Rs 15.58
+45	2026-07-01 01:06:32.838799	TRADE_BUY	TPKHL	10 units @ Rs 602.0 | TMS Sync: Rs -6,067.57 | Comm: Rs 22.57
+46	2026-07-01 01:08:39.614094	TRADE_BUY	TPKHL	10 units @ Rs 100.0 | TMS Sync: Rs -1,005.15 | Comm: Rs 5.15
+47	2026-07-06 04:50:04.479146	TRADE_BUY	ULHC	10 units @ Rs 423.0 | TMS Sync: Rs -4,270.86 | Comm: Rs 15.86
+48	2026-07-09 14:56:32.672447	TRADE_SELL	TPKHL	10 units @ Rs 555.0 | TMS Sync: Rs 5,356.40 | Comm: Rs 20.81
+49	2026-07-15 10:35:01.247569	TRADE_SELL	RIDI	28 units @ Rs 320.0 | TMS Sync: Rs 8,901.40 | Comm: Rs 33.60
+50	2026-07-15 10:58:19.152945	TRADE_SELL	TPKHL	10 units @ Rs 489.9 | TMS Sync: Rs 4,756.48 | Comm: Rs 18.37
+51	2026-07-15 10:59:14.946584	TRADE_SELL	ULHC	10 units @ Rs 356.9 | TMS Sync: Rs 3,530.62 | Comm: Rs 13.38
+52	2026-07-15 11:00:31.147445	TRADE_SELL	HBL	20 units @ Rs 190.8 | TMS Sync: Rs 3,776.69 | Comm: Rs 14.31
+53	2026-07-15 11:00:57.225868	TRADE_SELL	KBL	20 units @ Rs 209.9 | TMS Sync: Rs 4,157.26 | Comm: Rs 15.74
+54	2026-07-15 11:02:20.825522	TRADE_BUY	NHPC	20 units @ Rs 250.1 | TMS Sync: Rs -5,045.76 | Comm: Rs 18.76
+55	2026-07-19 12:19:30.924242	TRADE_BUY	BANDIPUR	10 units @ Rs 695.1 | TMS Sync: Rs -7,002.07 | Comm: Rs 26.07
+56	2026-07-19 12:20:19.584619	TRADE_BUY	SAIL	10 units @ Rs 900.1 | TMS Sync: Rs -9,059.75 | Comm: Rs 33.75
+57	2026-07-19 12:32:50.795882	TRADE_BUY	DHEL	10 units @ Rs 100.0 | TMS Sync: Rs -1,000.15 | Comm: Rs 0.15
+58	2026-07-19 12:33:13.384165	TRADE_BUY	BANDIPUR	10 units @ Rs 100.0 | TMS Sync: Rs -1,000.15 | Comm: Rs 0.15
+59	2026-07-19 12:34:03.172749	TRADE_BUY	HBL	10 units @ Rs 157.0 | TMS Sync: Rs -1,570.24 | Comm: Rs 0.24
+60	2026-07-19 12:38:39.983217	TRADE_SELL	DHEL	10 units @ Rs 592.2 | TMS Sync: Rs 5,509.18 | Comm: Rs 22.21
+61	2026-07-19 12:39:30.212547	TRADE_SELL	BANDIPUR	10 units @ Rs 791.2 | TMS Sync: Rs 7,343.03 | Comm: Rs 29.67
+62	2026-07-19 12:41:33.843629	TRADE_SELL	HBL	10 units @ Rs 209.4 | TMS Sync: Rs 2,022.03 | Comm: Rs 10.31
+63	2026-07-24 12:01:08.655092	TRADE_BUY	SAIL	10 units @ Rs 1121.6 | TMS Sync: Rs -11,283.06 | Comm: Rs 42.06
+64	2026-07-24 12:01:38.471159	TRADE_BUY	SOPL	10 units @ Rs 901.8 | TMS Sync: Rs -9,076.82 | Comm: Rs 33.82
+65	2026-07-27 15:36:24.604007	TRADE_SELL	BANDIPUR	10 units @ Rs 744.9 | TMS Sync: Rs 7,356.67 | Comm: Rs 27.93
+66	2026-07-27 15:38:26.113182	TRADE_SELL	SAIL	10 units @ Rs 1048.6 | TMS Sync: Rs 10,285.49 | Comm: Rs 39.32
+67	2026-07-27 15:39:26.041683	TRADE_SELL	NHPC	25 units @ Rs 269.9 | TMS Sync: Rs 6,697.20 | Comm: Rs 25.30
+68	2026-07-27 15:39:41.526831	TRADE_SELL	NHPC	15 units @ Rs 269.9 | TMS Sync: Rs 4,008.32 | Comm: Rs 15.18
+\.
+
+
+--
+-- Data for Name: cache; Type: TABLE DATA; Schema: public; Owner: neondb_owner
+--
+
+COPY public.cache (symbol, ltp, change, last_updated) FROM stdin;
+NHPC	269.90	-10.5	2026-07-27 21:25:00
+MCHL	280.00	-5.0	2026-07-27 21:25:00
+KBL	223.20	-5.0	2026-07-27 21:25:00
+TPC	360.00	-9.5	2026-07-27 21:25:00
+ULHC	350.00	-9.5	2026-07-27 21:25:00
+DHEL	605.00	-21.0	2026-07-27 21:25:00
+SGHC	320.00	-5.0	2026-07-27 21:25:00
+SAIL	1093.00	-15.0	2026-07-27 21:25:00
+BANDIPUR	730.00	-33.0	2026-07-27 21:25:00
+SOPL	858.90	-34.1	2026-07-27 21:25:00
+HBL	201.90	-4.1	2026-07-27 21:25:00
+RIDI	366.00	-4.0	2026-07-27 21:25:00
+KKHC	283.00	0.7	2026-07-27 21:25:00
+TPKHL	553.00	-21.0	2026-07-27 21:25:00
+\.
+
+
+--
+-- Data for Name: history; Type: TABLE DATA; Schema: public; Owner: neondb_owner
+--
+
+COPY public.history (id, "timestamp", event_type, description) FROM stdin;
+\.
+
+
+--
+-- Data for Name: portfolio; Type: TABLE DATA; Schema: public; Owner: neondb_owner
+--
+
+COPY public.portfolio ("S.N.", symbol, qty, price, transaction_type, date, remarks, net_amount, total_invested, total_received, tms_commission, cgt, soft_entry, hard_entry, soft_sl, hard_sl, soft_target, hard_target) FROM stdin;
+1	ULHC	10	450.3	BUY	2026-01-18	Sideways Scalping	4544.89	4544.89	0	16.8863	0.0000	\N	\N	\N	\N	\N	\N
+2	TPC	10	372.1	BUY	2026-01-20	Trend Follow and Also Impulse	3759.96	3759.96	0	13.9537	0.0000	\N	\N	\N	\N	\N	\N
+3	TPC	10	386.5	SELL	2026-01-29	Sold With BE as soon as BE Reached.<Maybe I should Have Waited>	3820.59	0	3820.59	14.4938	4.9162	\N	\N	\N	\N	\N	\N
+4	KKHC	20	247.8	BUY	2026-01-29	Gambling, Circuit Chase After 5%	4999.59	4999.59	0	18.5850	0.0000	\N	\N	\N	\N	\N	\N
+5	NHPC	10	220.5	BUY	2026-01-29	Impulse Buy,FOMO,Gamble,Circuit Chase,Partial Buy	2227.83	2227.83	0	10.3308	0.0000	\N	\N	\N	\N	\N	\N
+6	NHPC	10	225.1	BUY	2026-01-29	Partial Buy More	2273.84	2273.84	0	10.3377	0.0000	\N	\N	\N	\N	\N	\N
+7	ULHC	10	507	BUY	2026-02-04	TMS 58 Huge Accumulation, Target High	5114.01	5114.01	0	19.0125	0.0000	\N	\N	\N	\N	\N	\N
+8	KKHC	20	248	SELL	2026-02-05	Sold Too Early, Scary Cat Effect, Ignored Bullish View to chase BE, Got Circuit After i sold	4916.40	0	4916.4	18.6000	0.0000	\N	\N	\N	\N	\N	\N
+9	NHPC	10	221.3	SELL	2026-02-09	Partial Sell At BE after Chasing BE	2177.67	0	2177.67	10.3319	0.0000	\N	\N	\N	\N	\N	\N
+10	SGHC	10	433.1	BUY	2026-02-10	Bought For 58 Accumulation But Was Trap	4372.24	4372.24	0	16.2413	0.0000	\N	\N	\N	\N	\N	\N
+11	NHPC	10	289	SELL	2026-03-15	Sold After Circuit, Phychological Barrier 300, Buy Low Sell High Intraday	2808.9129374999998	0	2808.9129375	10.8375	45.2496	\N	\N	\N	\N	\N	\N
+12	ULHC	10	540	BUY	2026-03-15	ULHC Trend Of SideWay	5445.25	5445.25	0	20.2500	0.0000	\N	\N	\N	\N	\N	\N
+13	NHPC	10	280.1	BUY	2026-03-15	Intraday trading, Risky But Profitable, Buy Low Sell High, Only For Liquid and High Volatile	2836.50375	2836.50375	0	10.5038	0.0000	\N	\N	\N	\N	\N	\N
+14	SGHC	10	416.7	SELL	2026-03-17	Sold My Losing Stock and Inactive, Very Less Chance Of Uptrend.	4126.37375	0	4126.37375	15.6262	0.0001	\N	\N	\N	\N	\N	\N
+15	ULHC	10	571.2	SELL	2026-03-17	Intraday Buy Low Sell High Strategy.	5602.87025	0	5602.87025	21.4200	62.7097	\N	\N	\N	\N	\N	\N
+16	NHPC	10	311	BUY	2026-03-22	Buy In Bull Market	3146.6625	3146.6625	0	11.6625	0.0000	\N	\N	\N	\N	\N	\N
+17	RIDI	10	355.3	BUY	2026-03-22	Buy In Bull Market + Top Turnover	3591.32375	3591.32375	0	13.3237	0.0000	\N	\N	\N	\N	\N	\N
+18	NHPC	10	299	BUY	2026-03-23	Buy	3026.2125	3026.2125	0	11.2125	0.0000	\N	\N	\N	\N	\N	\N
+19	ULHC	10	550	BUY	2026-03-23	Buy At Lower Price for Intraday SideWay	5545.625	5545.625	0	20.6250	0.0000	\N	\N	\N	\N	\N	\N
+20	ULHC	20	547	SELL	2026-03-25	Over Leverage So Sell To Clear Dues Of TMS	10849.436875000001	0	10849.436875	41.0250	24.5381	\N	\N	\N	\N	\N	\N
+21	NHPC	10	314	BUY	2026-03-29	Buy Dip, Gamble At Balen hype.	3176.775	3176.775	0.0	11.7750	0.0000	\N	\N	\N	\N	\N	\N
+22	RIDI	10	380	BUY	2026-03-29	Gamble at Balen Hype, Capital From TMS Loophole	3839.25	3839.25	0.0	14.2500	0.0000	\N	\N	\N	\N	\N	\N
+23	ULHC	10	520.9	SELL	2026-03-31	Sold To Pay For TMS	5164.46625	0.0	5164.46625	19.5337	0.0000	\N	\N	\N	\N	\N	\N
+24	NHPC	20	300.6	BUY	2026-04-09	Average NHPC Intraday Plan	6059.545	6059.545	0.0	22.5450	\N	\N	\N	\N	\N	\N	\N
+25	NHPC	20	313.9	SELL	2026-04-10	Intraday	6219.223187500001	0.0	6219.223187500001	23.5425	10.2343	\N	\N	\N	\N	\N	\N
+26	NHPC	20	333	BUY	2026-04-15	Intraday	6709.975	6709.975	0.0	24.9750	\N	\N	\N	\N	\N	\N	\N
+27	NHPC	20	317.9	SELL	2026-04-16	Hard SL Hit	6291.6706875	0.0	6291.6706875	23.8425	17.4868	\N	\N	\N	\N	\N	\N
+28	NHPC	20	314.6	SELL	2026-04-17	SL Hit	6243.405	0.0	6243.405	23.5950	0.0000	\N	\N	\N	\N	\N	\N
+29	RIDI	10	369.9	SELL	2026-04-17	SL Hit	3660.12875	0.0	3660.12875	13.8713	0.0000	\N	\N	\N	\N	\N	\N
+30	RIDI	10	356	BUY	2026-04-20		3598.35	3598.35	0.0	13.3500	\N	\N	\N	\N	\N	\N	\N
+31	MCHL	10	400.1	BUY	2026-04-20	Right Share Announcement Try	4041.00375	4041.00375	0.0	15.0037	\N	\N	\N	\N	\N	\N	\N
+32	MCHL	10	365.8	SELL	2026-04-23	Right Share Hype Failed	3619.2825	0.0	3619.2825	13.7175	0.0000	\N	\N	\N	\N	\N	\N
+33	NHPC	15	298.8	BUY	2026-04-28	Average at Low Price	4523.8075	4523.8075	0.0	16.8075	\N	\N	\N	\N	\N	\N	\N
+34	RIDI	15	347	BUY	2026-04-28	Average at Low Price	5249.51875	5249.51875	0.0	19.5188	\N	\N	\N	\N	\N	\N	\N
+35	TPKHL	10	100	BUY	2026-05-07	IPO	1005.15	1005.15	0.0	5.1500	\N	\N	\N	\N	\N	\N	\N
+36	RIDI	20	351.4	SELL	2026-05-20	Sold For Capital/Auto Execution During College	6976.645	0.0	6976.645	26.3550	0.0000	\N	\N	\N	\N	\N	\N
+37	ULHC	10	477.7	BUY	2026-05-22	Buy At Strong Support + TMS 58 Accumulation. Target 1 :520, Average More =  450	4819.91375	4819.91375	0.0	17.9138	\N	\N	\N	\N	\N	\N	\N
+38	NHPC	15	299	SELL	2026-06-02	Sold After SL And Long Waiting	4443.18125	0.0	4443.18125	16.8188	0.0000	\N	\N	\N	\N	\N	\N
+39	RIDI	13	332	BUY	2026-06-25	Buy At Low Price <Pre Open>	4357.185	4357.185	0.0	16.1850	\N	\N	\N	\N	320.00	\N	365.00
+40	HBL	10	193	BUY	2026-06-26	Ashar 15 Mystery	1965.2895	1965.2895	0.0	10.2895	\N	\N	\N	190.00	187.90	220.00	250.00
+41	HBL	10	193	BUY	2026-06-26	Ashar 15 Mystery	1940.2895	1940.2895	0.0	10.2895	\N	\N	\N	190.00	187.90	220.00	250.00
+42	KBL	20	207.7	BUY	2026-06-26	Ashar 15 Banking Index Growth Experiment	4194.5775	4194.5775	0.0	15.5775	\N	\N	\N	\N	\N	220.00	250.00
+43	TPKHL	10	602	BUY	2026-06-30	IPO Bought Experiment 	6067.575	6067.575	0.0	22.5750	\N	\N	\N	592.00	580.00	650.00	700.00
+44	TPKHL	10	555	SELL	2026-07-06	Sell For ULHC Capital Payment	5356.4009375	0.0	5356.4009375	20.8125	147.7866	\N	\N	\N	\N	\N	\N
+45	ULHC	10	423	BUY	2026-07-06	Buy at Low + High Volume	4270.8625	4270.8625	0.0	15.8625	\N	\N	\N	\N	\N	\N	\N
+46	RIDI	28	320	SELL	2026-07-14	Sold At Falling market Unaware of Massive News	8901.4	0.0	8901.4	33.6000	0.0000	\N	\N	\N	\N	\N	\N
+47	TPKHL	10	489.9	SELL	2026-07-14	Sold For 2.5% Hike of CGT 	4756.48409375	0.0	4756.48409375	18.3713	99.1447	\N	\N	\N	\N	\N	\N
+48	ULHC	10	356.9	SELL	2026-07-14	Partial Sold As It Became Falling Knife	3530.61625	0.0	3530.61625	13.3838	0.0000	\N	\N	\N	\N	\N	\N
+49	HBL	20	190.8	SELL	2026-07-14	Mistake : Sold Due to Losing Patience Due To Falling Nepse	3776.69	0.0	3776.69	14.3100	0.0000	\N	\N	\N	\N	\N	\N
+50	KBL	20	209.9	SELL	2026-07-14	Mistake : Sold Due to Losing Patience Due To Falling Nepse	4157.2575	0.0	4157.2575	15.7425	0.0000	\N	\N	\N	\N	\N	\N
+51	NHPC	20	250.1	BUY	2026-07-15	Average At Potentially Buttom <Sell All If 240 Close>	5045.7575	5045.7575	0.0	18.7575	\N	\N	\N	240.00	235.00	\N	\N
+52	BANDIPUR	10	695.1	BUY	2026-07-17	Fundamental Good, New Bull Start, Good Momentum	7002.06625	7002.06625	0.0	26.0662	\N	\N	\N	\N	666.00	\N	\N
+53	SAIL	10	900.1	BUY	2026-07-17	Fundamental Good, New Bull Start, Good Momentum, Hype	9059.75375	9059.75375	0.0	33.7538	\N	\N	\N	\N	825.00	\N	\N
+54	DHEL	10	100	BUY	2025-07-31	IPO	1000.151	1000.151	0.0	0.1510	\N	\N	\N	\N	\N	\N	\N
+55	BANDIPUR	10	100	BUY	2025-08-27	IPO	1000.151	1000.151	0.0	0.1510	\N	\N	\N	\N	\N	\N	\N
+56	HBL	10	157	BUY	2025-07-18	IPO	1570.2365	1570.2365	0.0	0.2365	\N	\N	\N	\N	\N	\N	\N
+57	DHEL	10	592.2	SELL	2026-01-04	IPO Sell	5509.183062499999	0.0	5509.183062499999	22.2075	365.6094	\N	\N	\N	\N	\N	\N
+58	BANDIPUR	10	791.2	SELL	2026-01-04	IPO Sell	7343.03025	0.0	7343.03025	29.6700	514.2998	\N	\N	\N	\N	\N	\N
+59	HBL	10	209.4	SELL	2026-03-17	IPO Sell	2022.0344575	0.0	2022.0344575	10.3141	36.6514	\N	\N	\N	\N	\N	\N
+60	SAIL	10	1121.6	BUY	2026-07-24	Average At Good Momentum Stock	11283.06	11283.06	0.0	42.0600	\N	\N	\N	\N	\N	\N	\N
+61	SOPL	10	901.8	BUY	2026-07-24	Good Sector Maybe Good Future	9076.8175	9076.8175	0.0	33.8175	\N	\N	\N	\N	\N	\N	\N
+62	BANDIPUR	10	744.9	SELL	2026-07-23	Placed Sell order at Higher Price Which Got Executed	7356.66625	0.0	7356.66625	27.9337	39.4000	\N	\N	\N	\N	\N	\N
+63	SAIL	10	1048.6	SELL	2026-07-27	SL Hit as Market Shown Bear Movement	10285.48975	0.0	10285.48975	39.3225	136.1878	\N	\N	\N	\N	\N	\N
+64	NHPC	25	269.9	SELL	2026-07-27	SL Hit as Market Shown Bear Movement	6697.196874999999	0.0	6697.196874999999	25.3031	0.0000	\N	\N	\N	\N	\N	\N
+65	NHPC	15	269.9	SELL	2026-07-27	SL Hit as Market Shown Bear Movement	4008.3181249999993	0.0	4008.3181249999993	15.1819	0.0000	\N	\N	\N	\N	\N	\N
+\.
+
+
+--
+-- Data for Name: portfolio_backup; Type: TABLE DATA; Schema: public; Owner: neondb_owner
+--
+
+COPY public.portfolio_backup (symbol, qty, price, transaction_type, date, remarks, net_amount, total_invested, total_received, tms_commission, cgt, soft_entry, hard_entry, soft_sl, hard_sl, soft_target, hard_target, "S.N.") FROM stdin;
+ULHC	10	540	BUY	2026-03-15	ULHC Trend Of SideWay	5445.25	5445.25	0	20.2500	0.0000	\N	\N	\N	\N	\N	\N	1
+NHPC	10	311	BUY	2026-03-22	Buy In Bull Market	3146.6625	3146.6625	0	11.6625	0.0000	\N	\N	\N	\N	\N	\N	2
+RIDI	10	355.3	BUY	2026-03-22	Buy In Bull Market + Top Turnover	3591.32375	3591.32375	0	13.3237	0.0000	\N	\N	\N	\N	\N	\N	3
+NHPC	10	299	BUY	2026-03-23	Buy	3026.2125	3026.2125	0	11.2125	0.0000	\N	\N	\N	\N	\N	\N	4
+ULHC	10	550	BUY	2026-03-23	Buy At Lower Price for Intraday SideWay	5545.625	5545.625	0	20.6250	0.0000	\N	\N	\N	\N	\N	\N	5
+NHPC	10	221.3	SELL	2026-02-09	Partial Sell At BE after Chasing BE	2177.67	0	2177.67	10.3319	0.0000	\N	\N	\N	\N	\N	\N	6
+KKHC	20	248	SELL	2026-02-05	Sold Too Early, Scary Cat Effect, Ignored Bullish View to chase BE, Got Circuit After i sold	4916.40	0	4916.4	18.6000	0.0000	\N	\N	\N	\N	\N	\N	7
+TPC	10	386.5	SELL	2026-01-29	Sold With BE as soon as BE Reached.<Maybe I should Have Waited>	3820.59	0	3820.59	14.4938	4.9162	\N	\N	\N	\N	\N	\N	8
+NHPC	10	289	SELL	2026-03-15	Sold After Circuit, Phychological Barrier 300, Buy Low Sell High Intraday	2808.9129374999998	0	2808.9129375	10.8375	45.2496	\N	\N	\N	\N	\N	\N	9
+SGHC	10	416.7	SELL	2026-03-17	Sold My Losing Stock and Inactive, Very Less Chance Of Uptrend.	4126.37375	0	4126.37375	15.6262	0.0001	\N	\N	\N	\N	\N	\N	10
+ULHC	10	571.2	SELL	2026-03-17	Intraday Buy Low Sell High Strategy.	5602.87025	0	5602.87025	21.4200	62.7097	\N	\N	\N	\N	\N	\N	11
+ULHC	20	547	SELL	2026-03-25	Over Leverage So Sell To Clear Dues Of TMS	10849.436875000001	0	10849.436875	41.0250	24.5381	\N	\N	\N	\N	\N	\N	12
+RIDI	10	380	BUY	2026-03-29	Gamble at Balen Hype, Capital From TMS Loophole	3839.25	3839.25	0.0	14.2500	0.0000	\N	\N	\N	\N	\N	\N	13
+RIDI	20	351.4	SELL	2026-05-20	Sold For Capital/Auto Execution During College	6976.645	0.0	6976.645	26.3550	0.0000	\N	\N	\N	\N	\N	\N	14
+ULHC	10	477.7	BUY	2026-05-22	Buy At Strong Support + TMS 58 Accumulation. Target 1 :520, Average More =  450	4819.91375	4819.91375	0.0	17.9138	\N	\N	\N	\N	\N	\N	\N	15
+NHPC	15	299	SELL	2026-06-02	Sold After SL And Long Waiting	4443.18125	0.0	4443.18125	16.8188	0.0000	\N	\N	\N	\N	\N	\N	16
+RIDI	13	332	BUY	2026-06-25	Buy At Low Price <Pre Open>	4357.185	4357.185	0.0	16.1850	\N	\N	\N	\N	320.00	\N	365.00	17
+HBL	10	193	BUY	2026-06-26	Ashar 15 Mystery	1965.2895	1965.2895	0.0	10.2895	\N	\N	\N	190.00	187.90	220.00	250.00	18
+HBL	10	193	BUY	2026-06-26	Ashar 15 Mystery	1940.2895	1940.2895	0.0	10.2895	\N	\N	\N	190.00	187.90	220.00	250.00	19
+KBL	20	207.7	BUY	2026-06-26	Ashar 15 Banking Index Growth Experiment	4194.5775	4194.5775	0.0	15.5775	\N	\N	\N	\N	\N	220.00	250.00	20
+TPKHL	10	602	BUY	2026-06-30	IPO Bought Experiment 	6067.575	6067.575	0.0	22.5750	\N	\N	\N	592.00	580.00	650.00	700.00	21
+TPKHL	10	100	BUY	2026-05-07	IPO	1005.15	1005.15	0.0	5.1500	\N	\N	\N	\N	\N	\N	\N	22
+ULHC	10	423	BUY	2026-07-06	Buy at Low + High Volume	4270.8625	4270.8625	0.0	15.8625	\N	\N	\N	\N	\N	\N	\N	23
+TPKHL	10	555	SELL	2026-07-06	Sell For ULHC Capital Payment	5356.4009375	0.0	5356.4009375	20.8125	147.7866	\N	\N	\N	\N	\N	\N	24
+RIDI	28	320	SELL	2026-07-15	Sold At Falling market Unaware of Massive News	8901.4	0.0	8901.4	33.6000	0.0000	\N	\N	\N	\N	\N	\N	25
+SGHC	10	433.1	BUY	2026-02-10	Bought For 58 Accumulation But Was Trap	4372.24	4372.24	0	16.2413	0.0000	\N	\N	\N	\N	\N	\N	26
+ULHC	10	507	BUY	2026-02-04	TMS 58 Huge Accumulation, Target High	5114.01	5114.01	0	19.0125	0.0000	\N	\N	\N	\N	\N	\N	27
+KKHC	20	247.8	BUY	2026-01-29	Gambling, Circuit Chase After 5%	4999.59	4999.59	0	18.5850	0.0000	\N	\N	\N	\N	\N	\N	28
+NHPC	10	220.5	BUY	2026-01-29	Impulse Buy,FOMO,Gamble,Circuit Chase,Partial Buy	2227.83	2227.83	0	10.3308	0.0000	\N	\N	\N	\N	\N	\N	29
+NHPC	10	225.1	BUY	2026-01-29	Partial Buy More	2273.84	2273.84	0	10.3377	0.0000	\N	\N	\N	\N	\N	\N	30
+TPC	10	372.1	BUY	2026-01-20	Trend Follow and Also Impulse	3759.96	3759.96	0	13.9537	0.0000	\N	\N	\N	\N	\N	\N	31
+ULHC	10	450.3	BUY	2026-01-18	Sideways Scalping	4544.89	4544.89	0	16.8863	0.0000	\N	\N	\N	\N	\N	\N	32
+NHPC	10	280.1	BUY	2026-03-15	Intraday trading, Risky But Profitable, Buy Low Sell High, Only For Liquid and High Volatile	2836.50375	2836.50375	0	10.5038	0.0000	\N	\N	\N	\N	\N	\N	33
+NHPC	10	314	BUY	2026-03-29	Buy Dip, Gamble At Balen hype.	3176.775	3176.775	0.0	11.7750	0.0000	\N	\N	\N	\N	\N	\N	34
+ULHC	10	520.9	SELL	2026-03-31	Sold To Pay For TMS	5164.46625	0.0	5164.46625	19.5337	0.0000	\N	\N	\N	\N	\N	\N	35
+NHPC	20	300.6	BUY	2026-04-09	Average NHPC Intraday Plan	6059.545	6059.545	0.0	22.5450	\N	\N	\N	\N	\N	\N	\N	36
+NHPC	20	313.9	SELL	2026-04-10	Intraday	6219.223187500001	0.0	6219.223187500001	23.5425	10.2343	\N	\N	\N	\N	\N	\N	37
+NHPC	20	333	BUY	2026-04-15	Intraday	6709.975	6709.975	0.0	24.9750	\N	\N	\N	\N	\N	\N	\N	38
+NHPC	20	317.9	SELL	2026-04-16	Hard SL Hit	6291.6706875	0.0	6291.6706875	23.8425	17.4868	\N	\N	\N	\N	\N	\N	39
+RIDI	10	369.9	SELL	2026-04-17	SL Hit	3660.12875	0.0	3660.12875	13.8713	0.0000	\N	\N	\N	\N	\N	\N	40
+NHPC	20	314.6	SELL	2026-04-17	SL Hit	6243.405	0.0	6243.405	23.5950	0.0000	\N	\N	\N	\N	\N	\N	41
+RIDI	10	356	BUY	2026-04-20		3598.35	3598.35	0.0	13.3500	\N	\N	\N	\N	\N	\N	\N	42
+MCHL	10	400.1	BUY	2026-04-20	Right Share Announcement Try	4041.00375	4041.00375	0.0	15.0037	\N	\N	\N	\N	\N	\N	\N	43
+MCHL	10	365.8	SELL	2026-04-23	Right Share Hype Failed	3619.2825	0.0	3619.2825	13.7175	0.0000	\N	\N	\N	\N	\N	\N	44
+NHPC	15	298.8	BUY	2026-04-28	Average at Low Price	4523.8075	4523.8075	0.0	16.8075	\N	\N	\N	\N	\N	\N	\N	45
+RIDI	15	347	BUY	2026-04-28	Average at Low Price	5249.51875	5249.51875	0.0	19.5188	\N	\N	\N	\N	\N	\N	\N	46
+\.
+
+
+--
+-- Data for Name: tms_trx; Type: TABLE DATA; Schema: public; Owner: neondb_owner
+--
+
+COPY public.tms_trx (id, date, stock, type, medium, amount, charge, remark, status, reference) FROM stdin;
+1	2026-01-08		Deposit	ConnectIPS	10824.21	8.0	My First Collateral In My TMS	Settled	568832045
+2	2026-01-18	ULHC * 10	Buy	Collateral	-4544.89	0.0		Settled	Buy ULHC For Sideway Scalping
+3	2026-01-20	TPC * 10	Buy	Collateral	-3759.95	0.0	Buy TPC With Long Term Trend	Settled	
+4	2026-01-29	(KKHC+NHPC) * 20	Buy	Collateral	-9501.25	0.0	Circuit Chase	Settled	
+5	2026-01-29		Deposit	ConnectIPS	7000.0	8.0	Depo For NHPC KKHC Settlement	Settled	587404287
+6	2026-01-29	TPC*10	Sell	Collateral	3820.59	0.0	Sold TPC at Just Above BE	Settled	
+7	2026-02-04		Withdrawal	NABIL Bank	-3820.59	10.0	TPC Capital Withdraw	Settled	
+8	2026-02-04	ULHC * 10	Buy	Collateral	-5114.01	0.0	TMS 58 Continous Accumulation	Settled	
+9	2026-02-04	ULHC	Deposit	GLOBAL IME Bank	1293.42	0.0	Payment For ULHC Clerance	Settled	WWKXGFPTX19
+10	2026-02-05	KKHC * 20	Sell	Collateral	4916.4	0.0	Sell KKHC Near BE Without Realizing Circuit {Scary Cat Effect}	Settled	
+11	2026-02-09	NHPC * 10	Sell	Collateral	2177.67	0.0	Partial Sell Near BE to Get Capital Back	Settled	
+13	2026-02-13		Deposit	GLOBAL IME Bank	1100.0	0.0	All Due Clearance	Settled	IOAQPW0136K
+14	2026-02-10	SGHC * 10	Buy	Collateral	-4372.24	0.0	TMS 58 Accumulation Trap	Settled	
+15	2026-03-15	NHPC	Sell	Collateral	2808.91	0.0	Sold NHPC and Implement Buy Low Sell High Strategy	Settled	
+16	2026-03-15	NHPC	Buy	Collateral	-2836.5	0.0	Buy Low Sell High Strategy	Settled	
+17	2026-03-16	ULHC	Buy	Collateral	-5445.25	0.0	Side Way Scalp	Settled	
+19	2026-03-17	SGHC	Sell	Collateral	4126.37	0.0	Sold SGHC, Sold Losing Stock For Other Stock Capital	Settled	
+18	2026-03-17	ULHC	Sell	Collateral	5602.87	0.0	Sold ULHC For Intraday Buy Sell Strategy, Strategy Successful.	Settled	
+23	2026-03-22	NHPC	Buy	Collateral	-3146.66	0.0	Bull Market, Balen Hype, Top Turnover	Settled	
+24	2026-03-22	RIDI	Buy	Collateral	-3591.32	0.0	Bull Market, Top Turnover	Settled	
+27	2026-03-23	NHPC	Buy	Collateral	-3026.21	0.0	Ordered at low 299 and Executed 	Settled	
+28	2026-03-23	ULHC	Buy	Collateral	-5545.63	0.0	Buy low Sell High Intraday Plan	Settled	
+29	2026-03-25	ULHC	Sell	Collateral	10849.44	0.0	Sold To Clear Previous Dues Of TMS	Settled	
+30	2026-03-29	NHPC	Buy	Collateral	-3176.78	0.0	Gamble At Balen Hype.	Settled	
+31	2026-03-29	RIDI	Buy	Collateral	-3839.25	0.0	Gamble At Balen Hype, Pre Open Market Buy.	Settled	
+32	2026-03-31	ULHC	Sell	Collateral	5164.46	0.0	Sold To Clear TMS Due!	Settled	
+33	2026-04-09	NHPC	Buy	Collateral	-6059.545	0	Auto-Logged: Average NHPC Intraday Plan	Settled	
+34	2026-04-10	NHPC	Sell	Collateral	6219.223187500001	0	Auto-Logged: Intraday	Settled	
+35	2026-04-15	NHPC	Buy	Collateral	-6709.975	0	Auto-Logged: Intraday	Settled	
+36	2026-04-16	NHPC	Sell	Collateral	6291.6706875	0	Auto-Logged: Hard SL Hit	Settled	
+37	2026-04-17	RIDI	Sell	Collateral	3660.12875	0	Auto-Logged: SL Hit	Settled	
+38	2026-04-17	NHPC	Sell	Collateral	6243.405	0	Auto-Logged: SL Hit	Settled	
+39	2026-04-20	RIDI	Buy	Collateral	-3598.35	0	Auto-Logged: 	Settled	
+40	2026-04-20	MCHL	Buy	Collateral	-4041.00375	0	Auto-Logged: Right Share Announcement Try	Settled	
+42	2026-04-22		Withdrawal	NABIL Bank	-1991.47	10.0	Auto Withdrawal	Settled	
+43	2026-04-23	MCHL	Sell	Collateral	3619.2825	0	Auto-Logged: Right Share Hype Failed	Settled	
+44	2026-04-28		Withdrawal	NABIL Bank	-3619.21	10.0	Auto Withdrawal	Settled	
+45	2026-04-28	NHPC	Buy	Collateral	-4523.8075	0	Auto-Logged: Average at Low Price	Settled	
+46	2026-04-28	RIDI	Buy	Collateral	-5249.51875	0	Auto-Logged: Average at Low Price	Settled	
+47	2026-04-30		Collateral Load	Moru Pay	3000.0	0.0	Moru Pay	Settled	2023513176
+48	2026-04-30		Collateral Load	Moru Pay	6433.31	0.0	Moru Pay	Settled	2023513845
+49	2026-05-20	RIDI	Sell	Collateral	6976.645	0	Auto-Logged: Sold For Capital/Auto Execution During College	Settled	
+50	2026-05-22	ULHC	Buy	Collateral	-4819.91375	0	Auto-Logged: Buy At Strong Support + TMS 58 Accumulation. Target 1 :520, Average More =  450	Settled	
+51	2026-06-02	NHPC	Sell	Collateral	4443.18125	0	Auto-Logged: Sold After SL And Long Waiting	Settled	
+52	2026-06-25	RIDI	Buy	Collateral	-4357.185	0	Auto-Logged: Buy At Low Price <Pre Open>	Settled	
+54	2026-06-08		Withdrawal	NABIL Bank	-1816.0	5.0	Withdrawal	Settled	
+53	2026-06-08		Withdrawal	NABIL Bank	-4433.17	10.0	Cash Needed	Settled	
+55	2026-06-26	HBL	Buy	Collateral	-1965.2895	0	Auto-Logged: Ashar 15 Mystery	Settled	
+56	2026-06-26	HBL	Buy	Collateral	-1940.2895	0	Auto-Logged: Ashar 15 Mystery	Settled	
+57	2026-06-26	KBL	Buy	Collateral	-4194.5775	0	Auto-Logged: Ashar 15 Banking Index Growth Experiment	Settled	
+58	2026-06-27		Deposit	Moru Pay	16000.0	0.0	Bank Trend Ashar 15	Settled	
+59	2026-06-30	TPKHL	Buy	Collateral	-6067.575	0	Auto-Logged: IPO Bought Experiment 	Settled	
+60	2026-05-07	TPKHL	Buy	Collateral	-1005.15	0	Auto-Logged: IPO	Settled	
+61	2026-05-07		Deposit	GLOBAL IME Bank	1005.0	0.0	TPKHL IPO	Settled	
+62	2026-07-01		Deposit	Moru Pay	2600.0	0.0	Pay For TPKHL	Settled	2023738968
+63	2026-07-06	ULHC	Buy	Collateral	-4270.8625	0	Auto-Logged: Buy at Low + High Volume	Settled	
+64	2026-07-06	TPKHL	Sell	Collateral	5356.4009375	0	Auto-Logged: Sell For ULHC Capital Payment	Settled	
+65	2026-07-09		Withdrawal	NABIL Bank	-1150.64	10.0	Auto	Settled	
+66	2026-07-15	RIDI	Sell	Collateral	8901.4	0	Auto-Logged: Sold At Falling market Unaware of Massive News	Settled	
+67	2026-07-14	TPKHL	Sell	Collateral	4756.48409375	0	Auto-Logged: Sold For 2.5% Hike of CGT 	Settled	
+68	2026-07-14	ULHC	Sell	Collateral	3530.61625	0	Auto-Logged: Partial Sold As It Became Falling Knife	Settled	
+69	2026-07-14	HBL	Sell	Collateral	3776.69	0	Auto-Logged: Mistake : Sold Due to Losing Patience Due To Falling Nepse	Settled	
+70	2026-07-14	KBL	Sell	Collateral	4157.2575	0	Auto-Logged: Mistake : Sold Due to Losing Patience Due To Falling Nepse	Settled	
+71	2026-07-15	NHPC	Buy	Collateral	-5045.7575	0	Auto-Logged: Average At Potentially Buttom <Sell All If 240 Close>	Settled	
+72	2026-07-17	BANDIPUR	Buy	Collateral	-7002.06625	0	Auto-Logged: Fundamental Good, New Bull Start, Good Momentum	Settled	
+73	2026-07-17	SAIL	Buy	Collateral	-9059.75375	0	Auto-Logged: Fundamental Good, New Bull Start, Good Momentum, Hype	Settled	
+74	2026-07-17		Withdrawal	NABIL Bank	-4004.88	0.0	Auto Withdraw TPKHL RIDI KBL HBL	Settled	
+79	2026-01-04	DHEL	Sell	Collateral	5509.183062499999	0	Auto-Logged: IPO Sell	Settled	
+80	2026-01-04	BANDIPUR	Sell	Collateral	7343.03025	0	Auto-Logged: IPO Sell	Settled	
+81	2026-03-17	HBL	Sell	Collateral	2022.0344575	0	Auto-Logged: IPO Sell	Settled	
+83	2026-01-07		Withdrawal	NABIL Bank	-7343.03	10	Bandipur IPO	Settled	
+82	2026-01-07		Withdrawal	NABIL Bank	-5509.18	10.0	DHEL IPO	Settled	
+84	2026-07-19		Withdrawal	Other Specified In Remark	-30.55	0.0	Removal Of Errors Caused Due to Charges	Settled	
+85	2026-07-24	SAIL	Buy	Collateral	-11283.06	0	Auto-Logged: Average At Good Momentum Stock	Settled	
+86	2026-07-24	SOPL	Buy	Collateral	-9076.8175	0	Auto-Logged: Good Sector Maybe Good Future	Settled	
+87	2026-07-23	BANDIPUR	Sell	Collateral	7356.66625	0	Auto-Logged: Placed Sell order at Higher Price Which Got Executed	Settled	
+88	2026-07-27	SAIL	Sell	Collateral	10285.48975	0	Auto-Logged: SL Hit as Market Shown Bear Movement	Settled	
+89	2026-07-27	NHPC	Sell	Collateral	6697.196874999999	0	Auto-Logged: SL Hit as Market Shown Bear Movement	Settled	
+90	2026-07-27	NHPC	Sell	Collateral	4008.3181249999993	0	Auto-Logged: SL Hit as Market Shown Bear Movement	Settled	
+91	2026-07-30		Withdrawal	NABIL Bank	-8002.8	0.0	Auto Withdrawal	Settled	
+\.
+
+
+--
+-- Data for Name: trading_journal; Type: TABLE DATA; Schema: public; Owner: neondb_owner
+--
+
+COPY public.trading_journal (id, date_time_stamp, symbol, topic, feeling, star, trade_thesis, final_remark) FROM stdin;
+1	2026-03-25 15:52:02.205202	ULHC	Over Leverage	Anxious	5	I Bought NHPC And Ridi With Money That I Never Had and I Had To Sell ULHC just at 547 Which Is Lower Than Average.\nSo we Should Not OverLeverage Our Capital.\nNever Use Borrowed Money Or Money That Have Time Limitation.	Never Over Leverage!\nNever Use Borrowed Money!!\nNever Use Capital With Time Limit!!!
+2	2026-03-31 06:05:13.798696	NHPC,RIDI	Gamble	FOMO	5	Never Ever Gamble Again.	I once gambler and got loss and on Sunday I gambled and am in huge loss.\nSo never ever Gamble Again.
+3	2026-03-31 15:47:55.490224	ULHC	Gamble	FOMO	2	Never Ever Gamble Again	Once I gambled On NHPC and KKHC Got Loss.\nAgain I Gambled Balen Hype And Failed Maybe.\nHence,\nNever Ever Gamble Again.\nI won For Systematic Swing Never For Gamble.
+\.
+
+
+--
+-- Data for Name: watchlist; Type: TABLE DATA; Schema: public; Owner: neondb_owner
+--
+
+COPY public.watchlist (id, symbol, target_price, stop_loss, notes, added_date) FROM stdin;
+1	ULHC	595.00	570.00	My Major Stock	2026-03-19
+\.
+
+
+--
+-- Data for Name: wealth; Type: TABLE DATA; Schema: public; Owner: neondb_owner
+--
+
+COPY public.wealth (snapshot_date, total_investment, current_value) FROM stdin;
+2026-01-18	4503.0	4511.0
+2026-01-19	4503.0	4511.0
+2026-01-20	8224.0	8250.0
+2026-01-21	8224.0	8365.0
+2026-01-22	8224.0	8293.0
+2026-01-23	8224.0	8293.0
+2026-01-24	8224.0	8293.0
+2026-01-25	8224.0	8510.0
+2026-01-26	8224.0	8480.0
+2026-01-27	8224.0	8532.0
+2026-01-28	8224.0	8750.0
+2026-01-29	13915.0	14068.0
+2026-01-30	13915.0	14068.0
+2026-01-31	13915.0	14068.0
+2026-02-01	13915.0	13876.0
+2026-02-02	13915.0	13772.0
+2026-02-03	13915.0	13654.0
+2026-02-04	18985.0	18778.0
+2026-02-05	14029.0	15076.0
+2026-02-06	14029.0	15076.0
+2026-02-07	14029.0	15076.0
+2026-02-08	14029.0	15320.0
+2026-02-09	11801.0	13318.0
+2026-02-10	16132.0	17390.0
+2026-02-11	16132.0	17180.0
+2026-02-12	16132.0	17107.0
+2026-02-13	16132.0	17107.0
+2026-02-14	16132.0	17107.0
+2026-02-15	16132.0	17107.0
+2026-02-16	16132.0	17050.0
+2026-02-17	16132.0	16703.0
+2026-02-18	16132.0	16703.0
+2026-02-19	16132.0	16703.0
+2026-02-20	16132.0	16703.0
+2026-02-21	16132.0	16703.0
+2026-02-22	16132.0	15970.0
+2026-02-23	16132.0	15958.0
+2026-02-24	16132.0	16790.0
+2026-02-25	16132.0	17315.0
+2026-02-26	16132.0	17397.0
+2026-02-27	16132.0	17397.0
+2026-02-28	16132.0	17397.0
+2026-03-01	16132.0	17219.0
+2026-03-02	16132.0	17219.0
+2026-03-03	16132.0	17567.0
+2026-03-04	16132.0	17567.0
+2026-03-05	16132.0	17567.0
+2026-03-06	16132.0	17567.0
+2026-03-07	16132.0	17567.0
+2026-03-08	16132.0	17567.0
+2026-03-09	16132.0	18560.0
+2026-03-10	16132.0	18009.0
+2026-03-11	16132.0	17814.0
+2026-03-12	16132.0	18142.0
+2026-03-13	16132.0	18142.0
+2026-03-14	16132.0	18142.0
+2026-03-15	21723.0	23692.0
+2026-03-16	21723.0	23692.0
+2026-03-17	12401.0	14001.0
+2026-03-18	12401.0	14001.0
+2026-03-19	12401.0	8968.520000000002
+2026-03-22	18718.5	20357.110000000004
+2026-07-19	29342.574074074073	31177.002676250002
+2026-07-20	29342.574074074073	33033.00267625
+2026-03-23	26921.95	29113.81
+2026-03-24	26921.95	20198.97
+2026-03-25	16685.45	19912.409999999996
+2026-07-24	49576.57407407408	33171.12517625
+2026-07-27	24039.833333333332	31006.79617625
+2026-03-26	16685.45	20757.409999999996
+2026-03-29	23469.25	27927.409999999996
+2026-03-30	23469.25	19643.179999999997
+2026-03-31	18351.0	19061.839999999997
+2026-04-01	18351.0	17945.839999999997
+2026-04-02	18351.0	18015.839999999997
+2026-04-09	24234.75	19786.295
+2026-04-10	18607.5	19985.518187499998
+2026-04-13	18607.5	20983.518187499998
+2026-04-15	24854.4	21331.5431875
+2026-04-16	19020.6	19767.213874999998
+2026-04-17	9510.3	19650.747625
+2026-04-23	13109.133333333333	16909.206375
+2026-04-28	22777.830917874395	12801.670124999999
+2026-04-30	22777.830917874395	22234.980125
+2026-05-21	15614.27536231884	22089.125125
+2026-06-02	16275.014492753624	22333.992625
+2026-06-26	28781.037481259373	14469.381124999996
+2026-07-01	35801.03748125937	37187.656124999994
+2026-07-02	35801.03748125937	39926.456125000004
+2026-07-06	40577.70414792604	38844.793625
+2026-07-09	37067.70414792604	34862.5545625
+2026-07-15	16366.074074074073	33673.24490625
+\.
+
+
+--
+-- Name: audit_log_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
+--
+
+SELECT pg_catalog.setval('public.audit_log_id_seq', 68, true);
+
+
+--
+-- Name: history_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
+--
+
+SELECT pg_catalog.setval('public.history_id_seq', 1, false);
+
+
+--
+-- Name: portfolio_S.N._seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
+--
+
+SELECT pg_catalog.setval('public."portfolio_S.N._seq"', 46, true);
+
+
+--
+-- Name: portfolio_S.N._seq1; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
+--
+
+SELECT pg_catalog.setval('public."portfolio_S.N._seq1"', 65, true);
+
+
+--
+-- Name: portfolio_sn_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
+--
+
+SELECT pg_catalog.setval('public.portfolio_sn_seq', 1, false);
+
+
+--
+-- Name: tms_trx_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
+--
+
+SELECT pg_catalog.setval('public.tms_trx_id_seq', 91, true);
+
+
+--
+-- Name: trading_journal_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
+--
+
+SELECT pg_catalog.setval('public.trading_journal_id_seq', 3, true);
+
+
+--
+-- Name: watchlist_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
+--
+
+SELECT pg_catalog.setval('public.watchlist_id_seq', 1, true);
+
+
+--
+-- Name: audit_log audit_log_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.audit_log
+    ADD CONSTRAINT audit_log_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: cache cache_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.cache
+    ADD CONSTRAINT cache_pkey PRIMARY KEY (symbol);
+
+
+--
+-- Name: history history_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.history
+    ADD CONSTRAINT history_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: portfolio_backup portfolio_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.portfolio_backup
+    ADD CONSTRAINT portfolio_pkey PRIMARY KEY ("S.N.");
+
+
+--
+-- Name: portfolio portfolio_pkey1; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.portfolio
+    ADD CONSTRAINT portfolio_pkey1 PRIMARY KEY ("S.N.");
+
+
+--
+-- Name: tms_trx tms_trx_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.tms_trx
+    ADD CONSTRAINT tms_trx_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: trading_journal trading_journal_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.trading_journal
+    ADD CONSTRAINT trading_journal_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: watchlist watchlist_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.watchlist
+    ADD CONSTRAINT watchlist_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: watchlist watchlist_symbol_key; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.watchlist
+    ADD CONSTRAINT watchlist_symbol_key UNIQUE (symbol);
+
+
+--
+-- Name: wealth wealth_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.wealth
+    ADD CONSTRAINT wealth_pkey PRIMARY KEY (snapshot_date);
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: cloud_admin
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE cloud_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO neon_superuser WITH GRANT OPTION;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: cloud_admin
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE cloud_admin IN SCHEMA public GRANT ALL ON TABLES TO neon_superuser WITH GRANT OPTION;
+
+
+--
+-- PostgreSQL database dump complete
+--
+
+\unrestrict UD4CTl7aHbPGHrzXrkrmtEbBVDBh0IS2uCwLx1BwfjQkE6OEKu1Co3QCLRIpuYs
+
