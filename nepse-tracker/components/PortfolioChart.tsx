@@ -41,9 +41,12 @@ export default function PortfolioChart({ holdings }: { holdings: Holding[] }) {
             ))}
           </Pie>
           <Tooltip
-            formatter={(value: number) => [`NPR ${value.toLocaleString()}`, 'Value']}
-            contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151', borderRadius: '8px', color: '#FFF' }}
-          />
+          formatter={(value: number | string | undefined) => [
+          `NPR ${Number(value ?? 0).toLocaleString()}`,
+          'Value'
+  ]}
+          contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151', borderRadius: '0.5rem' }}
+/>
           <Legend verticalAlign="bottom" height={36} wrapperStyle={{ color: '#9CA3AF', fontSize: '12px' }} />
         </PieChart>
       </ResponsiveContainer>
