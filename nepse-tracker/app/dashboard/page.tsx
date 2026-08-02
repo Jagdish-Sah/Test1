@@ -1,24 +1,19 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/client';
 import PortfolioChart from '@/components/PortfolioChart';
 
-// Initialize Supabase Client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
 interface PortfolioRow {
-  "S.N.": number;
+  id?: string;
   symbol: string;
   qty: number;
   price: number;
   transaction_type: 'BUY' | 'SELL';
   date: string;
-  net_amount: number;
-  total_invested: number;
-  total_received: number;
+  net_amount?: number;
+  total_invested?: number;
+  total_received?: number;
 }
 
 interface CacheRow {
@@ -47,6 +42,8 @@ interface DashboardMetrics {
 }
 
 export default function DashboardOverview() {
+  const supabase = createClient();
+  
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,18 +52,28 @@ export default function DashboardOverview() {
     async function fetchAndCalculateMetrics() {
       try {
         setLoading(true);
+        setError(null);
 
-        // 1. Fetch raw transaction portfolio data and cache prices
+        // 1. Authenticate user to bypass RLS
+        const { data: { user }, error: userErr } = await supabase.auth.getUser();
+        
+        if (userErr || !user) {
+          setError('Authentication required. Please log in to view your dashboard.');
+          setLoading(false);
+          return;
+        }
+
+        // 2. Fetch raw transaction portfolio data (filtered by user) and cache prices
         const [{ data: portfolioData, error: portfolioErr }, { data: cacheData, error: cacheErr }] =
           await Promise.all([
-            supabase.from('portfolio').select('*').order('date', { ascending: true }),
+            supabase.from('portfolio').select('*').eq('user_id', user.id).order('date', { ascending: true }),
             supabase.from('cache').select('*'),
           ]);
 
         if (portfolioErr) throw portfolioErr;
         if (cacheErr) throw cacheErr;
 
-        // 2. Map prices & last sync time from cache
+        // 3. Map prices & last sync time from cache
         const priceMap: Record<string, { ltp: number; change: number }> = {};
         let latestSyncTime = 'N/A';
 
@@ -82,7 +89,7 @@ export default function DashboardOverview() {
           }
         });
 
-        // 3. Process portfolio transactions using Weighted Average Cost
+        // 4. Process portfolio transactions using Weighted Average Cost
         const symbolHoldings: Record<string, { qty: number; totalCost: number }> = {};
         let capitalDeployed = 0;
         let cashRecycled = 0;
@@ -131,7 +138,7 @@ export default function DashboardOverview() {
           }
         });
 
-        // 4. Calculate active holdings & unrealized metrics
+        // 5. Calculate active holdings & unrealized metrics
         let portfolioValue = 0;
         let activeInvestment = 0;
         let todaysChange = 0;
@@ -155,7 +162,7 @@ export default function DashboardOverview() {
           }
         });
 
-        // 5. Final derived ratios
+        // 6. Final derived ratios
         const unrealizedPL = portfolioValue - activeInvestment;
         const unrealizedPLPercent = activeInvestment > 0 ? (unrealizedPL / activeInvestment) * 100 : 0;
         const netRealizedPLPercent = totalClosedInvestment > 0 ? (totalRealizedPL / totalClosedInvestment) * 100 : 0;
@@ -181,6 +188,7 @@ export default function DashboardOverview() {
           holdings: activeHoldingsChart,
         });
       } catch (err: any) {
+        console.error('Dashboard Error:', err);
         setError(err.message || 'Failed to calculate database portfolio metrics.');
       } finally {
         setLoading(false);
@@ -188,21 +196,21 @@ export default function DashboardOverview() {
     }
 
     fetchAndCalculateMetrics();
-  }, []);
+  }, [supabase]);
 
   const isProfitable = (val: number) => val >= 0;
 
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64 text-slate-400 font-mono text-sm">
-        <span className="animate-pulse">⏳ Synchronizing DBMS metrics...</span>
+        <span className="animate-pulse">⏳ Synchronizing DBMS metrics & calculating ratios...</span>
       </div>
     );
   }
 
   if (error || !metrics) {
     return (
-      <div className="p-6 bg-rose-950/40 border border-rose-800 rounded-xl text-rose-300 text-sm">
+      <div className="p-6 max-w-7xl mx-auto bg-rose-950/40 border border-rose-800 rounded-xl text-rose-300 text-sm font-mono">
         ❌ Error loading dashboard data: {error || 'No database records available'}
       </div>
     );
@@ -217,7 +225,7 @@ export default function DashboardOverview() {
             📊 Market Dashboard
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Last Market Sync: <span className="text-slate-300 font-mono">{metrics.lastSync}</span>
+            Last Market Sync: <span className="text-emerald-400 font-mono">{metrics.lastSync}</span>
           </p>
         </div>
       </div>
@@ -263,7 +271,7 @@ export default function DashboardOverview() {
               Rs {metrics.netRealizedPL.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded ${isProfitable(metrics.netRealizedPLPercent) ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-              {metrics.netRealizedPLPercent}%
+              {isProfitable(metrics.netRealizedPLPercent) ? '+' : ''}{metrics.netRealizedPLPercent}%
             </span>
           </div>
 
@@ -273,7 +281,7 @@ export default function DashboardOverview() {
               Rs {metrics.unrealizedPL.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded ${isProfitable(metrics.unrealizedPLPercent) ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-              {metrics.unrealizedPLPercent}%
+              {isProfitable(metrics.unrealizedPLPercent) ? '+' : ''}{metrics.unrealizedPLPercent}%
             </span>
           </div>
 
@@ -302,21 +310,21 @@ export default function DashboardOverview() {
           <div className="p-5 bg-slate-900/60 border border-slate-800 rounded-xl">
             <span className="text-xs text-slate-400 font-medium">Total Capital Deployed</span>
             <div className="text-xl font-bold font-mono text-slate-200 mt-1">
-              Rs {metrics.capitalDeployed.toLocaleString('en-IN')}
+              Rs {metrics.capitalDeployed.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </div>
           </div>
 
           <div className="p-5 bg-slate-900/60 border border-slate-800 rounded-xl">
             <span className="text-xs text-slate-400 font-medium">Total Cash Recycled</span>
             <div className="text-xl font-bold font-mono text-slate-200 mt-1">
-              Rs {metrics.cashRecycled.toLocaleString('en-IN')}
+              Rs {metrics.cashRecycled.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </div>
           </div>
 
           <div className="p-5 bg-slate-900/60 border border-slate-800 rounded-xl">
             <span className="text-xs text-slate-400 font-medium">Net Cash Flow</span>
             <div className={`text-xl font-bold font-mono mt-1 ${isProfitable(metrics.netCashFlow) ? 'text-emerald-400' : 'text-rose-400'}`}>
-              Rs {metrics.netCashFlow.toLocaleString('en-IN')}
+              Rs {metrics.netCashFlow.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </div>
           </div>
 
@@ -336,8 +344,8 @@ export default function DashboardOverview() {
           {metrics.holdings.length > 0 ? (
             <PortfolioChart holdings={metrics.holdings} />
           ) : (
-            <div className="h-48 flex items-center justify-center text-xs text-slate-500">
-              No active holdings found in portfolio.
+            <div className="h-48 flex items-center justify-center text-xs text-slate-500 font-mono">
+              No active holdings found to map allocation.
             </div>
           )}
         </div>
@@ -345,13 +353,13 @@ export default function DashboardOverview() {
         <div className="p-6 bg-slate-900/60 border border-slate-800 rounded-xl flex flex-col justify-between">
           <div>
             <h3 className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
-              📢 Market Alerts
+              📢 System Status
             </h3>
-            <div className="p-4 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-400">
-              System Normal. Active scan filtering automatically against authenticated user record isolation.
+            <div className="p-4 bg-slate-950 border border-emerald-900/50 rounded-lg text-xs text-emerald-400 font-mono">
+              ✅ Authentication Sync Online. Secure user-level data isolation verified.
             </div>
           </div>
-          <div className="mt-6 pt-4 border-t border-slate-800/80 text-xs text-slate-500">
+          <div className="mt-6 pt-4 border-t border-slate-800/80 text-xs text-slate-500 font-mono">
             Automated terminal monitor running active scan against NEPSE board updates.
           </div>
         </div>

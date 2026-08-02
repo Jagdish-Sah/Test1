@@ -9,7 +9,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isSigningUp, setIsSigningUp] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [infoMsg, setInfoMsg] = useState('');
   const [loading, setLoading] = useState(false);
+
   const router = useRouter();
   const supabase = createClient();
 
@@ -17,60 +19,79 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
+    setInfoMsg('');
 
-    if (isSigningUp) {
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) {
-        setErrorMsg(error.message);
+    try {
+      if (isSigningUp) {
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+
+        // Handles whether Supabase requires email verification
+        if (!data.session) {
+          setInfoMsg('Account created! Please check your email inbox to verify your account.');
+        } else {
+          router.refresh();
+          router.push('/dashboard');
+        }
       } else {
-        alert('Account created! Logging you in...');
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+
+        router.refresh();
         router.push('/dashboard');
       }
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        setErrorMsg(error.message);
-      } else {
-        router.push('/dashboard');
-      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'An unexpected error occurred.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white p-4">
-      <div className="max-w-md w-full bg-gray-800 p-8 rounded-xl shadow-lg border border-gray-700">
-        <h2 className="text-2xl font-bold mb-6 text-center">
-          {isSigningUp ? 'Create NEPSE Tracker Account' : 'Sign In to NEPSE Tracker'}
-        </h2>
+    <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-100 p-4">
+      <div className="max-w-md w-full bg-slate-900 p-8 rounded-xl shadow-xl border border-slate-800 space-y-6">
+        <div>
+          <h2 className="text-2xl font-black text-center text-white">
+            {isSigningUp ? 'Create NEPSE Tracker Account' : 'Sign In to NEPSE Tracker'}
+          </h2>
+          <p className="text-xs text-center text-slate-400 mt-1">
+            {isSigningUp ? 'Register to manage your portfolio' : 'Access your settlement engine & holdings'}
+          </p>
+        </div>
 
         {errorMsg && (
-          <div className="bg-red-500/20 border border-red-500 text-red-300 p-3 rounded mb-4 text-sm">
-            {errorMsg}
+          <div className="bg-rose-950/40 border border-rose-800 text-rose-300 p-3 rounded-lg text-xs font-mono">
+            ❌ {errorMsg}
+          </div>
+        )}
+
+        {infoMsg && (
+          <div className="bg-emerald-950/40 border border-emerald-800 text-emerald-300 p-3 rounded-lg text-xs font-mono">
+            ℹ️ {infoMsg}
           </div>
         )}
 
         <form onSubmit={handleAuth} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
+            <label className="block text-xs font-medium text-slate-300 mb-1">Email</label>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 rounded p-2 focus:outline-none focus:border-blue-500"
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-emerald-500"
               placeholder="you@example.com"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Password</label>
+            <label className="block text-xs font-medium text-slate-300 mb-1">Password</label>
             <input
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 rounded p-2 focus:outline-none focus:border-blue-500"
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-emerald-500"
               placeholder="••••••••"
             />
           </div>
@@ -78,16 +99,21 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-500 font-semibold p-2 rounded transition"
+            className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold p-2.5 text-xs rounded-lg transition shadow-lg shadow-emerald-500/10 cursor-pointer"
           >
             {loading ? 'Processing...' : isSigningUp ? 'Sign Up' : 'Sign In'}
           </button>
         </form>
 
-        <div className="mt-6 text-center">
+        <div className="text-center pt-2 border-t border-slate-800">
           <button
-            onClick={() => setIsSigningUp(!isSigningUp)}
-            className="text-sm text-gray-400 hover:underline"
+            type="button"
+            onClick={() => {
+              setIsSigningUp(!isSigningUp);
+              setErrorMsg('');
+              setInfoMsg('');
+            }}
+            className="text-xs text-slate-400 hover:text-slate-200 transition underline"
           >
             {isSigningUp
               ? 'Already have an account? Sign In'

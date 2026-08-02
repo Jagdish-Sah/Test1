@@ -1,12 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-// Initialize Supabase Client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { createClient } from '@/lib/supabase/client';
 
 type TxType = 'BUY' | 'SELL';
 
@@ -22,6 +17,8 @@ interface RecentEntry {
 }
 
 export default function AddTransactionPage() {
+  const supabase = createClient();
+
   const [type, setType] = useState<TxType>('BUY');
   const [symbol, setSymbol] = useState('NABIL');
   const [quantity, setQuantity] = useState<number | ''>(10);
@@ -29,11 +26,14 @@ export default function AddTransactionPage() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [remarks, setRemarks] = useState('');
 
+  // CGT Automation States (Only for SELL)
+  const [wacc, setWacc] = useState<number | ''>('');
+  const [isLongTerm, setIsLongTerm] = useState(false); // true = > 365 days (5%), false = < 365 days (7.5%)
+
   // Manual Overrides
   const [overrideBrokerComm, setOverrideBrokerComm] = useState<string>('');
   const [overrideCGT, setOverrideCGT] = useState<string>('');
   const [overrideDPFee, setOverrideDPFee] = useState<string>('');
-  const [holdingPeriod, setHoldingPeriod] = useState<'SHORT' | 'LONG'>('SHORT');
 
   // Recent Entries State & Loading/Error
   const [recentEntries, setRecentEntries] = useState<RecentEntry[]>([]);
@@ -47,13 +47,23 @@ export default function AddTransactionPage() {
     async function fetchTransactions() {
       try {
         setLoadingEntries(true);
-        const { data, error } = await supabase
+        setError(null);
+
+        const { data: { user }, error: userErr } = await supabase.auth.getUser();
+        if (userErr || !user) {
+          setError('You must be logged in to view your portfolio.');
+          setLoadingEntries(false);
+          return;
+        }
+
+        const { data, error: fetchErr } = await supabase
           .from('portfolio')
           .select('*')
+          .eq('user_id', user.id)
           .order('date', { ascending: false })
           .limit(10);
 
-        if (error) throw error;
+        if (fetchErr) throw fetchErr;
 
         if (data) {
           const mapped: RecentEntry[] = data.map((item) => ({
@@ -70,13 +80,14 @@ export default function AddTransactionPage() {
         }
       } catch (err: any) {
         console.error('Error fetching transactions:', err.message);
+        setError(err.message);
       } finally {
         setLoadingEntries(false);
       }
     }
 
     fetchTransactions();
-  }, []);
+  }, [supabase]);
 
   // Automated NEPSE Calculation Engine
   const calc = useMemo(() => {
@@ -94,6 +105,7 @@ export default function AddTransactionPage() {
         totalFees: 0,
         totalPayable: 0,
         breakevenPrice: 0,
+        profitOrLoss: 0
       };
     }
 
@@ -121,16 +133,30 @@ export default function AddTransactionPage() {
 
     // 4. Capital Gains Tax (SELL trades only)
     let cgt = 0;
+    let profitOrLoss = 0;
+
     if (type === 'SELL') {
       if (overrideCGT !== '') {
         cgt = Number(overrideCGT) || 0;
+      } else {
+        // Auto-calculate CGT based on WACC
+        const netReceivableBeforeCGT = baseAmount - brokerComm - sebonFee - dpFee;
+        const purchaseCost = (Number(wacc) || 0) * qty;
+        
+        profitOrLoss = netReceivableBeforeCGT - purchaseCost;
+
+        if (profitOrLoss > 0 && Number(wacc) > 0) {
+          // NEPSE Law: 5% for holding > 365 days, 7.5% for < 365 days
+          const cgtRate = isLongTerm ? 0.05 : 0.075;
+          cgt = profitOrLoss * cgtRate;
+        }
       }
     }
 
     const totalFees = brokerComm + sebonFee + dpFee + cgt;
     const totalPayable = type === 'BUY' ? baseAmount + totalFees : baseAmount - totalFees;
 
-    // 5. Breakeven Price Calculation
+    // 5. Breakeven Price Calculation (BUY trades only)
     let breakevenPrice = 0;
     if (type === 'BUY' && qty > 0) {
       const targetNetRec = totalPayable;
@@ -159,8 +185,9 @@ export default function AddTransactionPage() {
       totalFees,
       totalPayable,
       breakevenPrice,
+      profitOrLoss
     };
-  }, [quantity, price, type, overrideBrokerComm, overrideCGT, overrideDPFee]);
+  }, [quantity, price, type, wacc, isLongTerm, overrideBrokerComm, overrideCGT, overrideDPFee]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -170,6 +197,11 @@ export default function AddTransactionPage() {
       setSubmitting(true);
       setError(null);
       setSuccessMessage(null);
+
+      const { data: { user }, error: userErr } = await supabase.auth.getUser();
+      if (userErr || !user) {
+        throw new Error('You must be logged in to add transactions.');
+      }
 
       const payload = {
         symbol: symbol.toUpperCase(),
@@ -183,6 +215,7 @@ export default function AddTransactionPage() {
         cgt: calc.cgt,
         date,
         remarks: remarks.trim() || null,
+        user_id: user.id,
       };
 
       const { data, error: insertErr } = await supabase
@@ -204,8 +237,9 @@ export default function AddTransactionPage() {
       };
 
       setRecentEntries([newEntry, ...recentEntries]);
-      setSuccessMessage('Successfully saved transaction to Supabase database!');
+      setSuccessMessage('Successfully saved transaction and fee breakdown to database!');
       setRemarks('');
+      setWacc(''); // Reset WACC
     } catch (err: any) {
       setError(err.message || 'Failed to insert transaction into database.');
     } finally {
@@ -221,7 +255,7 @@ export default function AddTransactionPage() {
           📝 Trade & Settlement Engine
         </h1>
         <p className="text-xs text-slate-400 mt-1">
-          Advanced NEPSE calculator with automated CGT and Supabase database synchronization.
+          Advanced NEPSE calculator with automated 5%/7.5% CGT handling and secure session sync.
         </p>
       </div>
 
@@ -326,6 +360,52 @@ export default function AddTransactionPage() {
               </div>
             </div>
 
+            {/* Auto CGT Inputs for SELL */}
+            {type === 'SELL' && (
+              <div className="p-4 bg-slate-950 border border-amber-900/50 rounded-lg space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-amber-500">Capital Gains Tax (CGT) Automation</h3>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1.5">WACC / Purchase Price</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={wacc}
+                      onChange={(e) => setWacc(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="Avg Cost per share"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3.5 py-2 text-xs text-slate-100 font-mono focus:border-amber-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Holding Period</label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsLongTerm(false)}
+                        className={`flex-1 py-2 text-[11px] font-bold rounded transition ${
+                          !isLongTerm ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50' : 'bg-slate-900 text-slate-400 border border-slate-800 hover:bg-slate-800'
+                        }`}
+                      >
+                        Short Term (7.5%)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsLongTerm(true)}
+                        className={`flex-1 py-2 text-[11px] font-bold rounded transition ${
+                          isLongTerm ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50' : 'bg-slate-900 text-slate-400 border border-slate-800 hover:bg-slate-800'
+                        }`}
+                      >
+                        Long Term (5%)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Remarks / Notes */}
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">Remarks / Notes</label>
@@ -409,13 +489,22 @@ export default function AddTransactionPage() {
                 </div>
               </div>
 
-              {type === 'BUY' && (
+              {type === 'BUY' ? (
                 <div className="pt-2 border-t border-slate-800/80">
                   <span className="text-[11px] text-slate-400 uppercase tracking-wider block">Breakeven Price</span>
                   <div className="text-lg font-bold font-mono text-amber-400 mt-0.5">
                     Rs {calc.breakevenPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 </div>
+              ) : (
+                calc.profitOrLoss !== 0 && (
+                  <div className="pt-2 border-t border-slate-800/80">
+                    <span className="text-[11px] text-slate-400 uppercase tracking-wider block">Est. Profit / Loss</span>
+                    <div className={`text-lg font-bold font-mono mt-0.5 ${calc.profitOrLoss > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {calc.profitOrLoss > 0 ? '+' : ''}Rs {calc.profitOrLoss.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                )
               )}
             </div>
 

@@ -1,12 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-// Initialize Supabase Client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { createClient } from '@/lib/supabase/client';
 
 interface HoldingItem {
   ticker: string;
@@ -30,11 +25,11 @@ interface PortfolioSummary {
 
 // NEPSE Fee Calculation Helpers
 const getBrokerCommission = (amount: number) => {
-  if (amount <= 50000) return amount * 0.0036; // 0.36%
-  if (amount <= 500000) return amount * 0.0033; // 0.33%
-  if (amount <= 2000000) return amount * 0.00306; // 0.306%
-  if (amount <= 10000000) return amount * 0.0027; // 0.27%
-  return amount * 0.0024; // 0.24%
+  if (amount <= 50000) return Math.max(10, amount * 0.0036);
+  if (amount <= 500000) return amount * 0.0033;
+  if (amount <= 2000000) return amount * 0.0031;
+  if (amount <= 10000000) return amount * 0.0027;
+  return amount * 0.0024;
 };
 
 const calculateSellCharges = (units: number, price: number) => {
@@ -45,7 +40,26 @@ const calculateSellCharges = (units: number, price: number) => {
   return brokerFee + sebonFee + dpFee;
 };
 
+// Dynamic Break-Even Reverse Calculator
+const calculateBreakeven = (invested: number, units: number) => {
+  if (units <= 0 || invested <= 0) return 0;
+  
+  const targetNetRec = invested;
+  const minCommBreakeven = (targetNetRec + 25) / (units * (1 - 0.0036 - 0.00015));
+  const estBase = units * minCommBreakeven;
+  
+  let rate = 0.0036;
+  if (estBase > 10000000) rate = 0.0024;
+  else if (estBase > 2000000) rate = 0.0027;
+  else if (estBase > 500000) rate = 0.0031;
+  else if (estBase > 50000) rate = 0.0033;
+  
+  return (targetNetRec + 25) / (units * (1 - rate - 0.00015));
+};
+
 export default function PortfolioPage() {
+  const supabase = createClient();
+  
   const [holdings, setHoldings] = useState<HoldingItem[]>([]);
   const [summary, setSummary] = useState<PortfolioSummary>({
     totalInvested: 0,
@@ -60,25 +74,34 @@ export default function PortfolioPage() {
     async function fetchPortfolioData() {
       try {
         setLoading(true);
+        setError(null);
 
-        // 1. Fetch raw transaction portfolio data and cache prices
+        // 1. Authenticate user to bypass RLS
+        const { data: { user }, error: userErr } = await supabase.auth.getUser();
+        
+        if (userErr || !user) {
+          setError('Authentication required. Please log in to view your portfolio.');
+          setLoading(false);
+          return;
+        }
+
+        // 2. Fetch raw transaction portfolio data and cache prices
         const [{ data: portfolioData, error: portfolioErr }, { data: cacheData, error: cacheErr }] =
           await Promise.all([
-            supabase.from('portfolio').select('*').order('date', { ascending: true }),
+            supabase.from('portfolio').select('*').eq('user_id', user.id).order('date', { ascending: true }),
             supabase.from('cache').select('*'),
           ]);
 
         if (portfolioErr) throw portfolioErr;
         if (cacheErr) throw cacheErr;
 
-        // 2. Map Live Prices from Cache
+        // 3. Map Live Prices from Cache
         const priceMap: Record<string, number> = {};
         (cacheData || []).forEach((c) => {
           priceMap[c.symbol] = Number(c.ltp) || 0;
         });
 
-        // 3. Aggregate Transactions into Active Holdings
-        // Using WACC methodology: selling reduces invested capital proportionally to units
+        // 4. Aggregate Transactions into Active Holdings
         const aggregatedHoldings: Record<string, { units: number; invested: number }> = {};
 
         (portfolioData || []).forEach((trx) => {
@@ -94,18 +117,18 @@ export default function PortfolioPage() {
 
           if (trx.transaction_type === 'BUY') {
             aggregatedHoldings[sym].units += qty;
-            aggregatedHoldings[sym].invested += netAmt; // Net amount should already include buy fees
+            aggregatedHoldings[sym].invested += netAmt;
           } else if (trx.transaction_type === 'SELL') {
             const currentUnits = aggregatedHoldings[sym].units;
             if (currentUnits > 0) {
               const currentWacc = aggregatedHoldings[sym].invested / currentUnits;
               aggregatedHoldings[sym].units -= qty;
-              aggregatedHoldings[sym].invested -= currentWacc * qty;
+              aggregatedHoldings[sym].invested -= currentWacc * qty; // Proportional capital reduction
             }
           }
         });
 
-        // 4. Calculate Individual Metrics (WACC, BE, PNL, Net Receivable)
+        // 5. Calculate Individual Metrics (WACC, BE, PNL, Net Receivable)
         let totalPortfolioInvested = 0;
         let totalPortfolioReceivable = 0;
         const activeHoldings: HoldingItem[] = [];
@@ -115,11 +138,7 @@ export default function PortfolioPage() {
           if (h.units > 0.01) { // Filter out closed positions
             const ltp = priceMap[sym] || 0;
             const wacc = h.invested / h.units;
-            
-            // Break-Even Calculation:
-            // What price do we need to sell at so that (Units * Price) - SellCharges = Total Invested?
-            // Formula approx: (Invested + DP Fee) / (Units * (1 - MaxBrokerRate - SEBONRate))
-            const be = (h.invested + 25) / (h.units * (1 - 0.0036 - 0.00015));
+            const be = calculateBreakeven(h.invested, h.units);
 
             const sellCharges = calculateSellCharges(h.units, ltp);
             const netReceivable = (h.units * ltp) - sellCharges;
@@ -139,19 +158,19 @@ export default function PortfolioPage() {
               netReceivable,
               pnlAmount,
               pnlPercent,
-              weightage: 0, // Calculated in next step
+              weightage: 0,
             });
           }
         });
 
-        // 5. Calculate Weightage & Final Summary
+        // 6. Calculate Weightage & Final Summary
         activeHoldings.forEach((h) => {
           h.weightage = totalPortfolioReceivable > 0 
             ? (h.netReceivable / totalPortfolioReceivable) * 100 
             : 0;
         });
 
-        // Sort by highest weightage
+        // Sort by highest weightage (capital allocation)
         activeHoldings.sort((a, b) => b.weightage - a.weightage);
 
         const totalUnrealizedPL = totalPortfolioReceivable - totalPortfolioInvested;
@@ -168,6 +187,7 @@ export default function PortfolioPage() {
 
         setHoldings(activeHoldings);
       } catch (err: any) {
+        console.error('Portfolio Error:', err);
         setError(err.message || 'Failed to fetch and calculate portfolio data.');
       } finally {
         setLoading(false);
@@ -175,22 +195,22 @@ export default function PortfolioPage() {
     }
 
     fetchPortfolioData();
-  }, []);
+  }, [supabase]);
 
   const isProfitable = (val: number) => val >= 0;
 
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64 text-slate-400 font-mono text-sm">
-        <span className="animate-pulse">⏳ Aggregating database holdings & running calculations...</span>
+        <span className="animate-pulse">⏳ Aggregating database holdings & compiling analytics...</span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="p-6 bg-rose-950/40 border border-rose-800 rounded-xl text-rose-300 text-sm">
-        ❌ Error: {error}
+      <div className="p-6 max-w-7xl mx-auto bg-rose-950/40 border border-rose-800 rounded-xl text-rose-300 text-sm font-mono">
+        ❌ Critical Error: {error}
       </div>
     );
   }
@@ -200,7 +220,7 @@ export default function PortfolioPage() {
       {/* Header */}
       <div className="pb-4 border-b border-slate-800">
         <h1 className="text-2xl font-black text-white flex items-center gap-2">
-          💼 My Portfolio
+          💼 Dynamic Portfolio Engine
         </h1>
         <p className="text-xs text-slate-400 mt-1">
           Real-time tracking of active equity positions and net exit values.
@@ -212,14 +232,14 @@ export default function PortfolioPage() {
         <div className="p-5 bg-slate-900/60 border border-slate-800 rounded-xl space-y-1">
           <span className="text-xs text-slate-400 font-medium">Total Invested</span>
           <div className="text-2xl font-bold font-mono text-slate-100">
-            Rs {summary.totalInvested.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+            Rs {summary.totalInvested.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
 
         <div className="p-5 bg-slate-900/60 border border-slate-800 rounded-xl space-y-1">
           <span className="text-xs text-slate-400 font-medium">Net Receivable (at LTP)</span>
           <div className="text-2xl font-bold font-mono text-emerald-400">
-            Rs {summary.netReceivable.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+            Rs {summary.netReceivable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
 
@@ -227,7 +247,7 @@ export default function PortfolioPage() {
           <span className="text-xs text-slate-400 font-medium">True Unrealized P/L</span>
           <div className="flex items-baseline justify-between">
             <div className={`text-2xl font-bold font-mono ${isProfitable(summary.unrealizedPL) ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {isProfitable(summary.unrealizedPL) ? '+' : ''}Rs {summary.unrealizedPL.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+              {isProfitable(summary.unrealizedPL) ? '+' : ''}Rs {summary.unrealizedPL.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <span className={`text-xs font-semibold px-2 py-0.5 rounded ${isProfitable(summary.unrealizedPLPercent) ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
               {isProfitable(summary.unrealizedPLPercent) ? '+' : ''}{summary.unrealizedPLPercent.toFixed(2)}%
@@ -237,10 +257,10 @@ export default function PortfolioPage() {
       </div>
 
       {/* Active Holdings Table */}
-      <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden">
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+      <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden shadow-xl shadow-black/20">
+        <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/50">
           <h2 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-            📋 Active Holdings
+            📋 Active Capital Allocation
           </h2>
           <span className="text-xs text-slate-500 font-mono">{holdings.length} Positions</span>
         </div>
@@ -263,7 +283,7 @@ export default function PortfolioPage() {
               {holdings.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-8 text-center text-slate-500">
-                    No active positions found in database.
+                    No active positions found in database. Execute a BUY trade to populate.
                   </td>
                 </tr>
               ) : (
@@ -302,7 +322,7 @@ export default function PortfolioPage() {
       
       {/* Data Disclosure Note */}
       <div className="text-[10px] text-slate-500 text-right font-mono">
-        * "Net Receivable" and "B.E." are calculated assuming active NEPSE Broker Commisions (Slabs 0.24% - 0.36%), SEBON fee (0.015%), and flat DP fee (Rs 25). Capital Gains Tax (CGT) is excluded from Net Receivable until realization.
+        * "Net Receivable" and "B.E." are calculated utilizing dynamic NEPSE Broker Commissions (Slabs 0.24% - 0.36%), SEBON fee (0.015%), and a flat DP fee (Rs 25). Capital Gains Tax (CGT) is excluded from Net Receivable until realization.
       </div>
     </div>
   );
