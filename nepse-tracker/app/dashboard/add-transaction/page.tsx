@@ -1,6 +1,12 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+// Initialize Supabase Client
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 type TxType = 'BUY' | 'SELL';
 
@@ -12,6 +18,7 @@ interface RecentEntry {
   price: number;
   total: number;
   date: string;
+  remarks?: string;
 }
 
 export default function AddTransactionPage() {
@@ -28,11 +35,48 @@ export default function AddTransactionPage() {
   const [overrideDPFee, setOverrideDPFee] = useState<string>('');
   const [holdingPeriod, setHoldingPeriod] = useState<'SHORT' | 'LONG'>('SHORT');
 
-  // Recent Entries State
-  const [recentEntries, setRecentEntries] = useState<RecentEntry[]>([
-    { id: '1', type: 'BUY', symbol: 'NABIL', qty: 10, price: 100, total: 1035.15, date: '2026-08-02' },
-    { id: '2', type: 'BUY', symbol: 'CIT', qty: 4, price: 2150, total: 8628.42, date: '2026-07-28' },
-  ]);
+  // Recent Entries State & Loading/Error
+  const [recentEntries, setRecentEntries] = useState<RecentEntry[]>([]);
+  const [loadingEntries, setLoadingEntries] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Fetch recent transactions from Supabase on mount
+  useEffect(() => {
+    async function fetchTransactions() {
+      try {
+        setLoadingEntries(true);
+        const { data, error } = await supabase
+          .from('portfolio')
+          .select('*')
+          .order('date', { ascending: false })
+          .limit(10);
+
+        if (error) throw error;
+
+        if (data) {
+          const mapped: RecentEntry[] = data.map((item) => ({
+            id: item.id?.toString() || Math.random().toString(),
+            type: item.transaction_type as TxType,
+            symbol: item.symbol,
+            qty: Number(item.qty),
+            price: Number(item.price),
+            total: Number(item.net_amount || item.total_invested || item.total_received || 0),
+            date: item.date,
+            remarks: item.remarks,
+          }));
+          setRecentEntries(mapped);
+        }
+      } catch (err: any) {
+        console.error('Error fetching transactions:', err.message);
+      } finally {
+        setLoadingEntries(false);
+      }
+    }
+
+    fetchTransactions();
+  }, []);
 
   // Automated NEPSE Calculation Engine
   const calc = useMemo(() => {
@@ -86,7 +130,7 @@ export default function AddTransactionPage() {
     const totalFees = brokerComm + sebonFee + dpFee + cgt;
     const totalPayable = type === 'BUY' ? baseAmount + totalFees : baseAmount - totalFees;
 
-    // 5. Breakeven Price Calculation (Solves required selling price to recover buy & sell costs)
+    // 5. Breakeven Price Calculation
     let breakevenPrice = 0;
     if (type === 'BUY' && qty > 0) {
       const targetNetRec = totalPayable;
@@ -118,21 +162,55 @@ export default function AddTransactionPage() {
     };
   }, [quantity, price, type, overrideBrokerComm, overrideCGT, overrideDPFee]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!symbol || !quantity || !price) return;
 
-    const newEntry: RecentEntry = {
-      id: Date.now().toString(),
-      type,
-      symbol: symbol.toUpperCase(),
-      qty: Number(quantity),
-      price: Number(price),
-      total: calc.totalPayable,
-      date,
-    };
+    try {
+      setSubmitting(true);
+      setError(null);
+      setSuccessMessage(null);
 
-    setRecentEntries([newEntry, ...recentEntries]);
+      const payload = {
+        symbol: symbol.toUpperCase(),
+        transaction_type: type,
+        qty: Number(quantity),
+        price: Number(price),
+        net_amount: calc.totalPayable,
+        broker_commission: calc.brokerComm,
+        sebon_fee: calc.sebonFee,
+        dp_fee: calc.dpFee,
+        cgt: calc.cgt,
+        date,
+        remarks: remarks.trim() || null,
+      };
+
+      const { data, error: insertErr } = await supabase
+        .from('portfolio')
+        .insert([payload])
+        .select();
+
+      if (insertErr) throw insertErr;
+
+      const newEntry: RecentEntry = {
+        id: data?.[0]?.id?.toString() || Date.now().toString(),
+        type,
+        symbol: symbol.toUpperCase(),
+        qty: Number(quantity),
+        price: Number(price),
+        total: calc.totalPayable,
+        date,
+        remarks,
+      };
+
+      setRecentEntries([newEntry, ...recentEntries]);
+      setSuccessMessage('Successfully saved transaction to Supabase database!');
+      setRemarks('');
+    } catch (err: any) {
+      setError(err.message || 'Failed to insert transaction into database.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -143,9 +221,21 @@ export default function AddTransactionPage() {
           📝 Trade & Settlement Engine
         </h1>
         <p className="text-xs text-slate-400 mt-1">
-          Advanced NEPSE calculator with automated CGT and holding period analysis.
+          Advanced NEPSE calculator with automated CGT and Supabase database synchronization.
         </p>
       </div>
+
+      {error && (
+        <div className="p-4 bg-rose-950/40 border border-rose-800 rounded-xl text-rose-300 text-xs font-mono">
+          ❌ Error: {error}
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="p-4 bg-emerald-950/40 border border-emerald-800 rounded-xl text-emerald-300 text-xs font-mono">
+          ✅ {successMessage}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left: Transaction Form */}
@@ -262,7 +352,7 @@ export default function AddTransactionPage() {
                     value={overrideBrokerComm}
                     onChange={(e) => setOverrideBrokerComm(e.target.value)}
                     placeholder="Auto"
-                    className="w-full bg-slate-950 border border-slate-800 rounded border-slate-800 px-2.5 py-1.5 text-xs font-mono text-slate-200 focus:border-emerald-500 focus:outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs font-mono text-slate-200 focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
 
@@ -274,7 +364,7 @@ export default function AddTransactionPage() {
                     onChange={(e) => setOverrideCGT(e.target.value)}
                     placeholder="Auto"
                     disabled={type === 'BUY'}
-                    className="w-full bg-slate-950 border border-slate-800 rounded border-slate-800 px-2.5 py-1.5 text-xs font-mono text-slate-200 focus:border-emerald-500 focus:outline-none disabled:opacity-40"
+                    className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs font-mono text-slate-200 focus:border-emerald-500 focus:outline-none disabled:opacity-40"
                   />
                 </div>
 
@@ -285,7 +375,7 @@ export default function AddTransactionPage() {
                     value={overrideDPFee}
                     onChange={(e) => setOverrideDPFee(e.target.value)}
                     placeholder="25"
-                    className="w-full bg-slate-950 border border-slate-800 rounded border-slate-800 px-2.5 py-1.5 text-xs font-mono text-slate-200 focus:border-emerald-500 focus:outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs font-mono text-slate-200 focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
               </div>
@@ -293,9 +383,10 @@ export default function AddTransactionPage() {
 
             <button
               type="submit"
-              className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-lg transition shadow-lg shadow-emerald-500/10"
+              disabled={submitting}
+              className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold text-xs rounded-lg transition shadow-lg shadow-emerald-500/10 cursor-pointer"
             >
-              Confirm & Save Transaction
+              {submitting ? 'Saving to Database...' : 'Confirm & Save Transaction'}
             </button>
           </form>
         </div>
@@ -370,8 +461,9 @@ export default function AddTransactionPage() {
       <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden">
         <div className="p-4 border-b border-slate-800 flex items-center justify-between">
           <h2 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-            🕒 Recent Entries
+            🕒 Recent Entries (Database Synchronized)
           </h2>
+          <span className="text-xs text-slate-500 font-mono">{recentEntries.length} Records</span>
         </div>
 
         <div className="overflow-x-auto">
@@ -387,22 +479,36 @@ export default function AddTransactionPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-slate-200">
-              {recentEntries.map((e) => (
-                <tr key={e.id} className="hover:bg-slate-800/40 transition">
-                  <td className="py-3 px-4 font-bold">
-                    <span className={`px-2 py-0.5 rounded text-[10px] ${e.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-                      {e.type}
-                    </span>
+              {loadingEntries ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-slate-500">
+                    Loading recent transactions from database...
                   </td>
-                  <td className="py-3 px-4 font-bold text-emerald-400">{e.symbol}</td>
-                  <td className="py-3 px-4 text-right">{e.qty}</td>
-                  <td className="py-3 px-4 text-right">Rs {e.price.toFixed(2)}</td>
-                  <td className="py-3 px-4 text-right font-bold">
-                    Rs {e.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className="py-3 px-4 text-right text-slate-400">{e.date}</td>
                 </tr>
-              ))}
+              ) : recentEntries.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-slate-500">
+                    No transactions recorded yet.
+                  </td>
+                </tr>
+              ) : (
+                recentEntries.map((e) => (
+                  <tr key={e.id} className="hover:bg-slate-800/40 transition">
+                    <td className="py-3 px-4 font-bold">
+                      <span className={`px-2 py-0.5 rounded text-[10px] ${e.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                        {e.type}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 font-bold text-emerald-400">{e.symbol}</td>
+                    <td className="py-3 px-4 text-right">{e.qty.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-right">Rs {e.price.toFixed(2)}</td>
+                    <td className="py-3 px-4 text-right font-bold">
+                      Rs {e.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="py-3 px-4 text-right text-slate-400">{e.date}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
